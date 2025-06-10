@@ -1,44 +1,42 @@
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.documentmanagerapp.components.BottomNavigationBar
-import com.example.documentmanagerapp.components.api.ApiClient
-import com.example.documentmanagerapp.components.api.Auth.AuthApiService
-import com.example.documentmanagerapp.components.api.Data.request.LoginRequestDTO
-import com.example.documentmanagerapp.components.api.Service.loginAndSaveToken
+import com.example.documentmanagerapp.components.api.SecureStorage
 
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    var isLoggedIn by remember { mutableStateOf(false) }
+    val currentRoute by navController.currentBackStackEntryAsState()
 
-    // ✅ Gọi login khi Composable được tạo
+    // Kiểm tra token khi Composable được tạo
     LaunchedEffect(Unit) {
-        val retrofit = ApiClient.create { null } // chưa có token
-        val authApi = retrofit.create(AuthApiService::class.java)
-
-        val loginRequest = LoginRequestDTO(
-            username = "user@example.com",  // 🔁 sửa lại đúng tên field nếu backend yêu cầu là "username"
-            password = "password123"
-        )
-
-        loginAndSaveToken(
-            authApi = authApi,
-            loginRequest = loginRequest,
-            onSuccess = {
-                println("✅ Đăng nhập thành công và lưu token")
-            },
-            onError = {
-                println("❌ Lỗi đăng nhập: ${it.message}")
+        val token = SecureStorage.getToken()
+        if (token != null) {
+            isLoggedIn = true
+            navController.navigate("home") {
+                popUpTo("login") { inclusive = true }
             }
-        )
+        }
     }
 
     Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
-    ) {
-        NavHostContainer(navController, Modifier.padding(it))
+        bottomBar = {
+            // Chỉ hiển thị BottomNavigationBar nếu đã đăng nhập và không ở màn hình Login
+            if (isLoggedIn && currentRoute?.destination?.route != "login") {
+                BottomNavigationBar(navController)
+            }
+        }
+    ) { innerPadding ->
+        NavHostContainer(navController, Modifier.padding(innerPadding))
     }
 }

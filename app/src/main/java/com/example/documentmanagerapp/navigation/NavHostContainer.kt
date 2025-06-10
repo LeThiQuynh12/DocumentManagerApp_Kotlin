@@ -5,17 +5,19 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.documentmanagerapp.components.AddFileScreen
+import com.example.documentmanagerapp.components.Bookmarks.BookmarksScreen
 import com.example.documentmanagerapp.components.Home.HomeScreen
+
 
 import com.example.documentmanagerapp.components.SearchScreen
 import com.example.documentmanagerapp.components.Setting.SettingScreen
 
 @Composable
 fun NavHostContainer(navController: NavHostController, modifier: Modifier) {
-    NavHost(navController, startDestination = "home", modifier = modifier) {
+    NavHost(navController, startDestination = "login", modifier = modifier) {
         composable("home") { HomeScreen(navController) }
 
-        composable("bookmarks") { Text("Bookmarks Screen") }
+        composable("bookmarks") { BookmarksScreen(navController) }
         composable("search") { SearchScreen() }
         composable("add") { AddFileScreen() }
 
