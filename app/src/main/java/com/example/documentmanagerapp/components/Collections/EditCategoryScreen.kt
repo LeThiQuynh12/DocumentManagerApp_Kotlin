@@ -1,5 +1,6 @@
 package com.example.documentmanagerapp.components
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,8 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -39,11 +44,27 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
     val coroutineScope = rememberCoroutineScope()
     var categoryName by remember { mutableStateOf("") }
     var selectedGroup by remember { mutableStateOf("MAIN_BOOSTER") }
+    var isLoading by remember { mutableStateOf(true) }
 
-    // Giả lập lấy dữ liệu danh mục (cần API để lấy chi tiết danh mục)
+    // Lấy userId từ SharedPreferences
+    val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+    val userId = sharedPreferences.getLong("user_id", 1L) // Mặc định userId = 1 nếu không tìm thấy
+
+    // Tải dữ liệu danh mục
     LaunchedEffect(categoryId) {
-        // TODO: Thêm API để lấy chi tiết danh mục nếu cần
-        // Tạm thời để trống, cần người dùng nhập lại
+        try {
+            val category = repository.getCategoryById(categoryId)
+            if (category != null) {
+                categoryName = category.name
+                selectedGroup = category.group
+            } else {
+                Toast.makeText(context, "Không tìm thấy danh mục", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+        } finally {
+            isLoading = false
+        }
     }
 
     Column(
@@ -54,77 +75,109 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Sửa Danh Mục",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E3A8A),
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
-
-        OutlinedTextField(
-            value = categoryName,
-            onValueChange = { categoryName = it },
-            label = { Text("Tên danh mục") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-
+        // Thanh tiêu đề với nút back
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            RadioButton(
-                selected = selectedGroup == "MAIN_BOOSTER",
-                onClick = { selectedGroup = "MAIN_BOOSTER" }
-            )
+            IconButton(onClick = { navController.navigate("collections") }) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Quay lại",
+                    tint = Color(0xFF1E3A8A)
+                )
+            }
             Text(
-                text = "Main Booster",
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .weight(1f)
+                text = "Sửa Danh Mục",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E3A8A)
             )
-            RadioButton(
-                selected = selectedGroup == "ANOTHER_SAVED_LIST",
-                onClick = { selectedGroup = "ANOTHER_SAVED_LIST" }
-            )
-            Text(
-                text = "Another Saved List",
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .weight(1f)
-            )
+            // Spacer để căn chỉnh
+            IconButton(onClick = {}, enabled = false) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.Transparent
+                )
+            }
         }
 
-        Button(
-            onClick = {
-                if (categoryName.isBlank()) {
-                    Toast.makeText(context, "Vui lòng nhập tên danh mục", Toast.LENGTH_SHORT).show()
-                } else {
-                    coroutineScope.launch {
-                        try {
-                            repository.updateCategory(categoryId, categoryName, selectedGroup)
-                            Toast.makeText(context, "Cập nhật danh mục thành công", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+        if (isLoading) {
+            Text(
+                text = "Đang tải...",
+                fontSize = 16.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            OutlinedTextField(
+                value = categoryName,
+                onValueChange = { categoryName = it },
+                label = { Text("Tên danh mục") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                RadioButton(
+                    selected = selectedGroup == "MAIN_BOOSTER",
+                    onClick = { selectedGroup = "MAIN_BOOSTER" }
+                )
+                Text(
+                    text = "Main Booster",
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .weight(1f)
+                )
+                RadioButton(
+                    selected = selectedGroup == "ANOTHER_SAVED_LIST",
+                    onClick = { selectedGroup = "ANOTHER_SAVED_LIST" }
+                )
+                Text(
+                    text = "Another Saved List",
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .weight(1f)
+                )
+            }
+
+            Button(
+                onClick = {
+                    if (categoryName.isBlank()) {
+                        Toast.makeText(context, "Vui lòng nhập tên danh mục", Toast.LENGTH_SHORT).show()
+                    } else {
+                        coroutineScope.launch {
+                            try {
+                                repository.updateCategory(categoryId, categoryName, selectedGroup, userId)
+                                Toast.makeText(context, "Cập nhật danh mục thành công", Toast.LENGTH_SHORT).show()
+                                navController.navigate("collections")
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E90FF))
-        ) {
-            Text(
-                text = "Cập nhật",
-                color = Color.White,
-                fontSize = 16.sp
-            )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E90FF))
+            ) {
+                Text(
+                    text = "Cập nhật",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
         }
     }
 }

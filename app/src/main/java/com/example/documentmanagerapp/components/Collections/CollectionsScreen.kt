@@ -1,5 +1,6 @@
 package com.example.documentmanagerapp.components
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,11 +21,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-
 import com.example.documentmanagerapp.components.context.AuthViewModelFactory
 import com.example.documentmanagerapp.context.AuthViewModel
 import com.example.documentmanagerapp.utils.data.Category
@@ -41,12 +42,14 @@ fun CollectionsScreen(navController: NavController) {
     val user by authViewModel.user.observeAsState()
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var documentCounts by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
-    var loading by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var isMainBoosterExpanded by remember { mutableStateOf(true) }
     var isAnotherSavedListExpanded by remember { mutableStateOf(false) }
     var sortOrder by remember { mutableStateOf("asc") }
     var isGridView by remember { mutableStateOf(true) }
+    var dialogCategory by remember { mutableStateOf<Category?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val emojis = listOf("🌈", "😺", "🧠", "🛸")
     val anotherEmojis = listOf("✈️", "💼", "🎯")
@@ -54,7 +57,6 @@ fun CollectionsScreen(navController: NavController) {
     // Gọi API khi màn hình được focus
     LaunchedEffect(user) {
         user?.id?.let { userId ->
-            loading = true
             try {
                 val (newCategories, newCounts) = collectionsRepository.fetchData(userId)
                 categories = newCategories
@@ -71,8 +73,104 @@ fun CollectionsScreen(navController: NavController) {
     // Hiển thị lỗi
     LaunchedEffect(error) {
         error?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // Dialog chọn hành động
+    dialogCategory?.let { category ->
+        AlertDialog(
+            onDismissRequest = { dialogCategory = null },
+            title = { Text(category.name) },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            dialogCategory = null
+                            navController.navigate("editCategory/${category.id}")
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Sửa danh mục",
+                            color = Color(0xFF1E3A8A),        // Màu xanh đậm
+                            fontSize = 18.sp,                 // Kích thước chữ
+                            fontWeight = FontWeight.Bold,     // In đậm
+                            letterSpacing = 1.sp,             // Giãn cách chữ
+                            textAlign = TextAlign.Center,     // Căn giữa (nếu cần)
+                            modifier = Modifier.fillMaxWidth() // Kéo rộng để căn giữa hoạt động
+                        )
+
+                    }
+                    TextButton(
+                        onClick = {
+                            dialogCategory = null
+                            showDeleteDialog = true
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Xóa danh mục",
+                            color = Color(0xFFFF0000),        // Màu xanh đậm
+                            fontSize = 18.sp,                 // Kích thước chữ
+                            fontWeight = FontWeight.Bold,     // In đậm
+                            letterSpacing = 1.sp,             // Giãn cách chữ
+                            textAlign = TextAlign.Center,     // Căn giữa (nếu cần)
+                            modifier = Modifier.fillMaxWidth() // Kéo rộng để căn giữa hoạt động
+                        )
+
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { dialogCategory = null }) {
+                    Text("Hủy", color = Color(0xFF1E3A8A), fontSize=18.sp,fontWeight=FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // Dialog xác nhận xóa
+    if (showDeleteDialog && dialogCategory != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteDialog = false
+                dialogCategory = null
+            },
+            title = { Text("Xóa danh mục ${dialogCategory!!.name}") },
+            text = { Text("Bạn có chắc chắn muốn xóa danh mục này?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                collectionsRepository.deleteCategory(dialogCategory!!.id)
+                                categories = categories.filter { it.id != dialogCategory!!.id }
+                                Toast.makeText(context, "Xóa danh mục thành công", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                            showDeleteDialog = false
+                            dialogCategory = null
+                        }
+                    }
+                ) {
+                    Text("Xóa", color = Color(0xFF1E90FF))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    dialogCategory = null
+                }) {
+                    Text("Hủy", color = Color(0xFF1E3A8A))
+                }
+            }
+        )
     }
 
     if (loading) {
@@ -80,12 +178,12 @@ fun CollectionsScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF5F7FA))
-                .padding(20.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CircularProgressIndicator(color = Color(0xFFF97316))
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Đang tải danh mục...",
                 fontSize = 16.sp,
@@ -100,7 +198,7 @@ fun CollectionsScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF5F7FA))
-                .padding(20.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -109,9 +207,12 @@ fun CollectionsScreen(navController: NavController) {
                 fontSize = 16.sp,
                 color = Color(0xFF1E3A8A)
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            Button(onClick = { navController.navigate("addCategory") }) {
-                Text("Thêm danh mục")
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = { navController.navigate("addCategory") },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E90FF))
+            ) {
+                Text("Thêm danh mục", color = Color.White)
             }
         }
         return
@@ -121,28 +222,28 @@ fun CollectionsScreen(navController: NavController) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F7FA))
-            .padding(20.dp),
-        contentPadding = PaddingValues(bottom = 50.dp)
+            .padding(16.dp),
+        contentPadding = PaddingValues(bottom = 48.dp)
     ) {
         item {
             // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 40.dp),
+                    .padding(top = 32.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Collections",
-                    fontSize = 23.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E3A8A),
-                    modifier = Modifier.padding(vertical = 15.dp)
+                    modifier = Modifier.padding(vertical = 12.dp)
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     IconButton(onClick = { navController.navigate("addCategory") }) {
                         Icon(
@@ -164,13 +265,6 @@ fun CollectionsScreen(navController: NavController) {
                             modifier = Modifier.rotate(90f)
                         )
                     }
-                    IconButton(onClick = { /* TODO: Handle menu */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Menu",
-                            tint = Color(0xFF1E3A8A)
-                        )
-                    }
                     IconButton(onClick = { isGridView = !isGridView }) {
                         Icon(
                             imageVector = if (isGridView) Icons.Default.GridOn else Icons.Default.List,
@@ -188,8 +282,8 @@ fun CollectionsScreen(navController: NavController) {
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color(0xFFE6F0FA))
                     .clickable { navController.navigate("search") }
-                    .padding(horizontal = 20.dp, vertical = 4.dp)
-                    .padding(bottom = 20.dp)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .padding(bottom = 7.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -198,21 +292,23 @@ fun CollectionsScreen(navController: NavController) {
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
                         tint = Color(0xFFAAAAAA),
-                        modifier = Modifier.padding(end = 10.dp)
+                        modifier = Modifier
+                            .size(25.dp)
+                            .padding(end = 6.dp)
                     )
                     BasicTextField(
                         value = "",
                         onValueChange = {},
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp),
+                            .height(32.dp),
                         enabled = false,
                         decorationBox = { innerTextField ->
                             Box {
                                 Text(
-                                    "Search your bookmark",
+                                    text = "Search your collection",
                                     color = Color(0xFFAAAAAA),
-                                    fontSize = 16.sp
+                                    fontSize = 18.sp
                                 )
                                 innerTextField()
                             }
@@ -222,15 +318,15 @@ fun CollectionsScreen(navController: NavController) {
             }
 
             // Error Message
-            error?.let {
+            error?.let { errorText ->
                 Text(
-                    text = it,
+                    text = errorText,
                     color = Color.Red,
                     fontSize = 16.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 20.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        .padding(vertical = 16.dp),
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -241,7 +337,7 @@ fun CollectionsScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { isMainBoosterExpanded = !isMainBoosterExpanded }
-                    .padding(bottom = 10.dp),
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -250,14 +346,14 @@ fun CollectionsScreen(navController: NavController) {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E3A8A),
-                    modifier = Modifier.padding(top = 8.dp, bottom = 10.dp)
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
                 )
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = "Expand/Collapse",
                     tint = Color(0xFF1E3A8A),
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(24.dp)
                         .rotate(if (isMainBoosterExpanded) 0f else 180f)
                 )
             }
@@ -279,7 +375,7 @@ fun CollectionsScreen(navController: NavController) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 15.dp),
+                            .padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowCategories.forEach { category ->
@@ -291,18 +387,7 @@ fun CollectionsScreen(navController: NavController) {
                                 onClick = {
                                     navController.navigate("documentList/${category.id}/${category.name}")
                                 },
-                                onEllipsisClick = {
-                                    showCategoryDialog(
-                                        context,
-                                        navController,
-                                        category,
-                                        categories,
-                                        collectionsRepository,
-                                        coroutineScope
-                                    ) { newCategories ->
-                                        categories = newCategories
-                                    }
-                                },
+                                onEllipsisClick = { dialogCategory = category },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -321,21 +406,10 @@ fun CollectionsScreen(navController: NavController) {
                         onClick = {
                             navController.navigate("documentList/${category.id}/${category.name}")
                         },
-                        onEllipsisClick = {
-                            showCategoryDialog(
-                                context,
-                                navController,
-                                category,
-                                categories,
-                                collectionsRepository,
-                                coroutineScope
-                            ) { newCategories ->
-                                categories = newCategories
-                            }
-                        },
+                        onEllipsisClick = { dialogCategory = category },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 15.dp)
+                            .padding(bottom = 12.dp)
                     )
                 }
             }
@@ -347,7 +421,7 @@ fun CollectionsScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { isAnotherSavedListExpanded = !isAnotherSavedListExpanded }
-                    .padding(bottom = 10.dp),
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -356,14 +430,14 @@ fun CollectionsScreen(navController: NavController) {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E3A8A),
-                    modifier = Modifier.padding(top = 8.dp, bottom = 10.dp)
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
                 )
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = "Expand/Collapse",
                     tint = Color(0xFF1E3A8A),
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(24.dp)
                         .rotate(if (isAnotherSavedListExpanded) 0f else 180f)
                 )
             }
@@ -385,7 +459,7 @@ fun CollectionsScreen(navController: NavController) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 15.dp),
+                            .padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowCategories.forEach { category ->
@@ -397,18 +471,7 @@ fun CollectionsScreen(navController: NavController) {
                                 onClick = {
                                     navController.navigate("documentList/${category.id}/${category.name}")
                                 },
-                                onEllipsisClick = {
-                                    showCategoryDialog(
-                                        context,
-                                        navController,
-                                        category,
-                                        categories,
-                                        collectionsRepository,
-                                        coroutineScope
-                                    ) { newCategories ->
-                                        categories = newCategories
-                                    }
-                                },
+                                onEllipsisClick = { dialogCategory = category },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -427,21 +490,10 @@ fun CollectionsScreen(navController: NavController) {
                         onClick = {
                             navController.navigate("documentList/${category.id}/${category.name}")
                         },
-                        onEllipsisClick = {
-                            showCategoryDialog(
-                                context,
-                                navController,
-                                category,
-                                categories,
-                                collectionsRepository,
-                                coroutineScope
-                            ) { newCategories ->
-                                categories = newCategories
-                            }
-                        },
+                        onEllipsisClick = { dialogCategory = category },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 15.dp)
+                            .padding(bottom = 12.dp)
                     )
                 }
             }
@@ -466,26 +518,26 @@ fun CollectionCard(
     ) {
         Card(
             modifier = Modifier
-                .size(170.dp, 160.dp)
-                .clip(RoundedCornerShape(17.dp)),
+                .size(width = 160.dp, height = 150.dp)
+                .clip(RoundedCornerShape(16.dp)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1DC))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(10.dp),
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "📁",
-                    fontSize = 40.sp
+                    fontSize = 36.sp
                 )
                 Text(
                     text = emoji,
                     fontSize = 20.sp,
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 45.dp, end = 10.dp)
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
                 )
             }
         }
@@ -493,13 +545,13 @@ fun CollectionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 5.dp),
+                .padding(top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
                 modifier = Modifier
-                    .padding(start = 15.dp)
+                    .padding(start = 12.dp)
                     .weight(1f)
             ) {
                 Text(
@@ -516,7 +568,7 @@ fun CollectionCard(
             }
             IconButton(
                 onClick = { onEllipsisClick() },
-                modifier = Modifier.padding(5.dp)
+                modifier = Modifier.padding(4.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
@@ -526,35 +578,4 @@ fun CollectionCard(
             }
         }
     }
-}
-
-private fun showCategoryDialog(
-    context: android.content.Context,
-    navController: NavController,
-    category: Category,
-    categories: List<Category>,
-    repository: CollectionsRepository,
-    scope: kotlinx.coroutines.CoroutineScope,
-    onCategoriesUpdated: (List<Category>) -> Unit
-) {
-    androidx.appcompat.app.AlertDialog.Builder(context)
-        .setTitle(category.name)
-        .setItems(arrayOf("Sửa danh mục", "Xóa danh mục")) { _, which ->
-            when (which) {
-                0 -> { navController.navigate("editCategory/${category.id}") }
-                1 -> {
-                    scope.launch {
-                        try {
-                            repository.deleteCategory(category.id)
-                            onCategoriesUpdated(categories.filter { cat -> cat.id != category.id })
-                            Toast.makeText(context, "Xóa danh mục thành công", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
-        }
-        .setNegativeButton("Hủy", null)
-        .show()
 }

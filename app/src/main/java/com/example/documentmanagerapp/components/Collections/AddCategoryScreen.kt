@@ -1,5 +1,6 @@
 package com.example.documentmanagerapp.components
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,8 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -39,6 +44,10 @@ fun AddCategoryScreen(navController: NavController) {
     var categoryName by remember { mutableStateOf("") }
     var selectedGroup by remember { mutableStateOf("MAIN_BOOSTER") }
 
+    // Lấy userId từ SharedPreferences
+    val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+    val userId = sharedPreferences.getLong("user_id", 1L) // Mặc định userId = 1 nếu không tìm thấy
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -47,13 +56,36 @@ fun AddCategoryScreen(navController: NavController) {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Thêm Danh Mục",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E3A8A),
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
+        // Thanh tiêu đề với nút back
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { navController.navigate("collections") }) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Quay lại",
+                    tint = Color(0xFF1E3A8A)
+                )
+            }
+            Text(
+                text = "Thêm Danh Mục",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E3A8A)
+            )
+            // Spacer để căn chỉnh
+            IconButton(onClick = {}, enabled = false) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.Transparent
+                )
+            }
+        }
 
         OutlinedTextField(
             value = categoryName,
@@ -99,11 +131,11 @@ fun AddCategoryScreen(navController: NavController) {
                 } else {
                     coroutineScope.launch {
                         try {
-                            repository.addCategory(categoryName, selectedGroup)
+                            repository.addCategory(categoryName, selectedGroup, userId)
                             Toast.makeText(context, "Thêm danh mục thành công", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
+                            navController.navigate("collections")
                         } catch (e: Exception) {
-                            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }

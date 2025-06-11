@@ -36,18 +36,23 @@ class CollectionsRepository(context: Context) {
             } catch (e: HttpException) {
                 Log.e("CollectionsRepository", "HTTP error: ${e.code()} - ${e.message()}")
                 throw Exception("Lỗi server: HTTP ${e.code()}")
-            } catch (e: Exception) {
-                Log.e("CollectionsRepository", "Error: ${e.message}")
-                throw Exception("Lỗi kết nối: ${e.message}")
             }
+
+//            catch (e: Exception) {
+//                Log.e("CollectionsRepository", "Error: ${e.message}")
+//                throw Exception("Lỗi kết nối: ${e.message}")
+//            }
+
+
         }
     }
 
-    suspend fun addCategory(name: String, group: String): Category? {
+    suspend fun addCategory(name: String, group: String, userId: Long): Category? {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.addCategory(AddCategoryRequest(name, group))
-                val newCategory = response.results?.firstOrNull()
+                val request = AddCategoryRequest(name, group, AddCategoryRequest.User(userId))
+                val response = apiService.addCategory(request)
+                val newCategory = response.results
                 Log.d("CollectionsRepository", "Added category: $newCategory")
                 newCategory
             } catch (e: Exception) {
@@ -57,11 +62,12 @@ class CollectionsRepository(context: Context) {
         }
     }
 
-    suspend fun updateCategory(categoryId: Long, name: String, group: String): Category? {
+    suspend fun updateCategory(categoryId: Long, name: String, group: String, userId: Long): Category? {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.updateCategory(categoryId, AddCategoryRequest(name, group))
-                val updatedCategory = response.results?.firstOrNull()
+                val request = AddCategoryRequest(name, group, AddCategoryRequest.User(userId))
+                val response = apiService.updateCategory(categoryId, request)
+                val updatedCategory = response.results
                 Log.d("CollectionsRepository", "Updated category: $updatedCategory")
                 updatedCategory
             } catch (e: Exception) {
@@ -79,6 +85,20 @@ class CollectionsRepository(context: Context) {
             } catch (e: Exception) {
                 Log.e("CollectionsRepository", "Error deleting category: ${e.message}")
                 throw Exception("Lỗi xóa danh mục: ${e.message}")
+            }
+        }
+    }
+
+    suspend fun getCategoryById(categoryId: Long): Category? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getCategoryById(categoryId)
+                val category = response.results
+                Log.d("CollectionsRepository", "Fetched category: $category")
+                category
+            } catch (e: Exception) {
+                Log.e("CollectionsRepository", "Error fetching category: ${e.message}")
+                throw Exception("Lỗi lấy danh mục: ${e.message}")
             }
         }
     }
