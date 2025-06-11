@@ -16,13 +16,13 @@ data class SingleCategoryResponse(
     val results: Category? // Cho API trả về một đối tượng
 )
 
-data class Document(
+data class DocumentCategory(
     val id: Long,
     val category: Category?
 )
 
-data class DocumentResponse(
-    val results: List<Document>?
+data class DocumentCategoryResponse(
+    val results: List<DocumentCategory>?
 )
 
 data class AddCategoryRequest(

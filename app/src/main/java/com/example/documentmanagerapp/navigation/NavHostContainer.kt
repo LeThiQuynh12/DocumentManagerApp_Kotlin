@@ -15,7 +15,14 @@ import com.example.documentmanagerapp.components.Setting.SettingScreen
 fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(navController, startDestination = "login", modifier = modifier) {
         composable("login") { LoginScreen(navController) }
-        composable("home") { HomeScreen(onSearchClick = { navController.navigate("search") }) }
+        composable("home") {
+            HomeScreen(
+                navController = navController,
+                onSearchClick = { navController.navigate("search") }
+            )
+        }
+
+
         composable("bookmarks") { BookmarksScreen(navController) }
         composable("search") { SearchScreen() }
         composable("add") { AddFileScreen() }
