@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.documentmanagerapp.utils.service.CategoryApiService
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.runBlocking
@@ -12,9 +13,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
+import retrofit2.http.*
 import java.util.concurrent.TimeUnit
 
 const val API_URL = "http://10.0.2.2:8080"
@@ -57,7 +56,7 @@ data class UserResponse(
     val results: User?
 )
 
-interface ApiService {
+interface ApiService : CategoryApiService {
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: RefreshTokenRequest): RefreshTokenResponse
 
@@ -91,7 +90,7 @@ class TokenManager(private val context: Context) {
             val accessExpiresAt = System.currentTimeMillis() + accessExpiresIn * 1000
             val refreshExpiresAt = System.currentTimeMillis() + refreshExpiresIn * 1000
             val tokens = Tokens(accessToken, refreshToken, accessExpiresAt, refreshExpiresAt)
-            prefs.edit().putString("authTokens", Gson().toJson(tokens)).commit() // Đồng bộ
+            prefs.edit().putString("authTokens", Gson().toJson(tokens)).commit()
             Log.d("TokenManager", "Tokens saved: accessToken=$accessToken, expiresAt=$accessExpiresAt")
         } catch (e: Exception) {
             Log.e("TokenManager", "Error saving tokens: ${e.message}")
@@ -145,7 +144,7 @@ class TokenManager(private val context: Context) {
 
     suspend fun removeTokens() {
         try {
-            prefs.edit().remove("authTokens").commit() // Đồng bộ
+            prefs.edit().remove("authTokens").commit()
             Log.d("TokenManager", "Tokens removed")
         } catch (e: Exception) {
             Log.e("TokenManager", "Error removing tokens: ${e.message}")

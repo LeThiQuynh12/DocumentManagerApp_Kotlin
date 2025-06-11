@@ -1,4 +1,4 @@
-package com.example.documentmanagerapp.components.context
+package com.example.documentmanagerapp.context
 
 import android.content.Context
 import android.util.Log
@@ -37,7 +37,6 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     private val _error = MutableLiveData<String?>(null)
     val error: LiveData<String?> = _error
 
-    // Thêm biến để kiểm tra trạng thái thái đăng xuất
     private var isLoggedOut = false
 
     init {
@@ -112,7 +111,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
     suspend fun saveUserToStorage(user: User) {
         try {
-            prefs.edit().putString("user", Gson().toJson(user)).commit() // Sử dụng commit để đồng bộ
+            prefs.edit().putString("user", Gson().toJson(user)).commit()
             _user.postValue(user)
             Log.d("AuthViewModel", "Saved user to storage: $user")
         } catch (e: Exception) {
@@ -144,7 +143,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 Log.e("AuthViewModel", "API returned null user data")
                 _error.postValue("Không nhận được dữ liệu người dùng từ server")
                 _user.postValue(null)
-                prefs.edit().remove("user").commit() // Đồng bộ
+                prefs.edit().remove("user").commit()
             }
         } catch (e: HttpException) {
             Log.e("AuthViewModel", "HTTP error fetching user: ${e.code()} - ${e.message()}")
@@ -163,11 +162,10 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
     suspend fun logout() {
         try {
-            // Xóa user và token đồng bộ
             prefs.edit().remove("user").commit()
             tokenManager.removeTokens()
             _user.postValue(null)
-            isLoggedOut = true // Đánh dấu trạng thái đăng xuất
+            isLoggedOut = true
             Log.i("AuthViewModel", "Logout successful")
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error during logout: ${e.message}")

@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.documentmanagerapp.components.context.AuthViewModel
+import com.example.documentmanagerapp.context.AuthViewModel
 import com.example.documentmanagerapp.components.context.AuthViewModelFactory
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.livedata.observeAsState
