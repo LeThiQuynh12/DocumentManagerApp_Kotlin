@@ -1,6 +1,7 @@
 package com.example.documentmanagerapp.utils.service
 
 import com.example.documentmanagerapp.utils.data.DocumentData
+import com.example.documentmanagerapp.utils.data.DocumentLinkRequest
 import com.example.documentmanagerapp.utils.data.DocumentResponse
 import retrofit2.http.*
 
@@ -16,7 +17,7 @@ interface DocumentApiService {
     suspend fun getSharedDocuments(@Path("userId") userId: Long): DocumentResponse
 
     @POST("documents")
-    suspend fun createDocument(@Body document: DocumentData): DocumentData
+    suspend fun createDocument(@Body document: DocumentLinkRequest): DocumentData
 
     @PUT("documents/{id}")
     suspend fun updateDocument(@Path("id") id: Long, @Body document: DocumentData): DocumentData

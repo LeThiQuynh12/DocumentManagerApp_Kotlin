@@ -10,6 +10,8 @@ import com.example.documentmanagerapp.components.Bookmarks.BookmarksScreen
 import com.example.documentmanagerapp.components.Collections.DocumentListScreen
 import com.example.documentmanagerapp.components.Collections.FileDetailsScreen
 import com.example.documentmanagerapp.components.Home.HomeScreen
+import com.example.documentmanagerapp.components.Login.ForgetPasswordScreen
+import com.example.documentmanagerapp.components.Login.RegisterScreen
 import com.example.documentmanagerapp.components.Setting.SettingScreen
 
 @Composable
@@ -22,11 +24,9 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
                 onSearchClick = { navController.navigate("search") }
             )
         }
-
-
         composable("bookmarks") { BookmarksScreen(navController) }
         composable("search") { SearchScreen() }
-        composable("add") { AddFileScreen() }
+        composable("add") { AddFileScreen(navController) }
         composable("collections") { CollectionsScreen(navController) }
         composable("settings") { SettingScreen(navController) }
         composable("addCategory") { AddCategoryScreen(navController) }
@@ -36,6 +36,8 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
                 categoryId = backStackEntry.arguments?.getString("categoryId")?.toLongOrNull() ?: -1L
             )
         }
+        composable("forgetpassword") { ForgetPasswordScreen(navController) }
+        composable("register") { RegisterScreen(navController) }
         composable("documentList/{categoryId}/{categoryName}") { backStackEntry ->
             DocumentListScreen(
                 navController = navController,

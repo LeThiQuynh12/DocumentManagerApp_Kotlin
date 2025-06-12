@@ -45,7 +45,7 @@ fun MainScreen() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val authViewModel: AuthViewModel = AuthViewModelFactory(context).create(AuthViewModel::class.java)
-
+    val noBottomBarRoutes = listOf("login", "register", "forgetpassword")
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -65,7 +65,7 @@ fun MainScreen() {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute != "login") {
+            if (currentRoute !in noBottomBarRoutes) {
                 BottomNavigationBar(navController)
             }
         }

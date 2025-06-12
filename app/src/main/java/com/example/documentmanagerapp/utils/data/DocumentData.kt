@@ -44,12 +44,35 @@ data class UserData(
     val id: Long,
     val username: String // Thêm các trường khác nếu cần
 )
+data class DocumentLinkRequest(
+    @SerializedName("documentName")
+    val documentName: String,
 
-data class AddDocumentRequest(
-    @SerializedName("documentName") val documentName: String,
-    @SerializedName("fileType") val fileType: String,
-    @SerializedName("fileUrl") val fileUrl: String?,
-    @SerializedName("password") val password: String?,
-    @SerializedName("encryptionMethod") val encryptionMethod: String?,
-    @SerializedName("categoryId") val categoryId: Long?
+    @SerializedName("fileType")
+    val fileType: String,
+
+    @SerializedName("fileUrl")
+    val fileUrl: String?,
+
+    @SerializedName("password")
+    val password: String?,
+
+    @SerializedName("encryptionMethod")
+    val encryptionMethod: String?,
+
+    @SerializedName("user")
+    val user: UserIdRequest,
+
+    @SerializedName("category")
+    val category: CategoryIdRequest
+)
+
+data class UserIdRequest(
+    @SerializedName("id")
+    val id: Long
+)
+
+data class CategoryIdRequest(
+    @SerializedName("id")
+    val id: Long
 )

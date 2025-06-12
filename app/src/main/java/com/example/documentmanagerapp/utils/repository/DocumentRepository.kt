@@ -3,8 +3,8 @@ package com.example.documentmanagerapp.utils.repository
 import android.content.Context
 import android.util.Log
 import com.example.documentmanagerapp.utils.ApiClient
-import com.example.documentmanagerapp.utils.data.AddDocumentRequest
 import com.example.documentmanagerapp.utils.data.DocumentData
+import com.example.documentmanagerapp.utils.data.DocumentLinkRequest
 import com.example.documentmanagerapp.utils.service.DocumentApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,7 +32,7 @@ class DocumentRepository(context: Context) {
         }
     }
 
-    suspend fun addDocument(document: DocumentData): DocumentData? {
+    suspend fun addDocument(document: DocumentLinkRequest): DocumentData? {
         return withContext(Dispatchers.IO) {
             try {
                 val newDocument = apiService.createDocument(document)
