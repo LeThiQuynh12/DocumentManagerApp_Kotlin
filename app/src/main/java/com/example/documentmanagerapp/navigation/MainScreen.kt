@@ -6,18 +6,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.documentmanagerapp.components.context.AuthViewModelFactory
 import com.example.documentmanagerapp.context.AuthViewModel
-
+import androidx.compose.runtime.getValue
+//
+//@Composable
+//fun MainScreen() {
+//    val navController = rememberNavController()
+//    val context = LocalContext.current
+//    val authViewModel: AuthViewModel = AuthViewModelFactory(context).create(AuthViewModel::class.java)
+//
+//    val navBackStackEntry by navController.currentBackStackEntryAsState()
+//    val currentRoute = navBackStackEntry?.destination?.route
+//
+//    // Điều hướng tới login nếu chưa đăng nhập
+//    LaunchedEffect(authViewModel.user.value) {
+//        if (authViewModel.user.value == null) {
+//            navController.navigate("login") {
+//                popUpTo("main") { inclusive = true }
+//            }
+//        }
+//    }
+//
+//    Scaffold(
+//        bottomBar = {
+//            if (currentRoute != "login") {
+//                BottomNavigationBar(navController)
+//            }
+//        }
+//    ) { innerPadding ->
+//        NavHostContainer(navController, Modifier.padding(innerPadding))
+//    }
+//}
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val authViewModel: AuthViewModel = AuthViewModelFactory(context).create(AuthViewModel::class.java)
 
-    // Kiểm tra trạng thái đăng nhập
-    LaunchedEffect(authViewModel.user) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Gọi đăng xuất ngay khi khởi động ứng dụng
+    LaunchedEffect(Unit) {
+        authViewModel.logout()
+    }
+
+    // Điều hướng tới login nếu chưa đăng nhập
+    LaunchedEffect(authViewModel.user.value) {
         if (authViewModel.user.value == null) {
             navController.navigate("login") {
                 popUpTo("main") { inclusive = true }
@@ -26,7 +64,11 @@ fun MainScreen() {
     }
 
     Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
+        bottomBar = {
+            if (currentRoute != "login") {
+                BottomNavigationBar(navController)
+            }
+        }
     ) { innerPadding ->
         NavHostContainer(navController, Modifier.padding(innerPadding))
     }
