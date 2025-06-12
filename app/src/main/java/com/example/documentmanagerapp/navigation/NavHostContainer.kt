@@ -7,7 +7,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.documentmanagerapp.components.Bookmarks.BookmarksScreen
-
+import com.example.documentmanagerapp.components.Collections.DocumentListScreen
+import com.example.documentmanagerapp.components.Collections.FileDetailsScreen
 import com.example.documentmanagerapp.components.Home.HomeScreen
 import com.example.documentmanagerapp.components.Setting.SettingScreen
 
@@ -24,15 +25,21 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
         composable("addCategory") { AddCategoryScreen(navController) }
         composable("editCategory/{categoryId}") { backStackEntry ->
             EditCategoryScreen(
-                navController,
-                backStackEntry.arguments?.getString("categoryId")?.toLong() ?: -1
+                navController = navController,
+                categoryId = backStackEntry.arguments?.getString("categoryId")?.toLongOrNull() ?: -1L
             )
         }
         composable("documentList/{categoryId}/{categoryName}") { backStackEntry ->
             DocumentListScreen(
-                navController,
-                categoryId = backStackEntry.arguments?.getString("categoryId")?.toLong(),
+                navController = navController,
+                categoryId = backStackEntry.arguments?.getString("categoryId")?.toLongOrNull(),
                 categoryName = backStackEntry.arguments?.getString("categoryName")
+            )
+        }
+        composable("fileDetails/{documentId}") { backStackEntry ->
+            FileDetailsScreen(
+                navController = navController,
+                documentId = backStackEntry.arguments?.getString("documentId")?.toLongOrNull() ?: -1L
             )
         }
     }

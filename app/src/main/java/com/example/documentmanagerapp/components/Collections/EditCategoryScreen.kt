@@ -1,6 +1,7 @@
 package com.example.documentmanagerapp.components
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -45,23 +46,48 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
     var categoryName by remember { mutableStateOf("") }
     var selectedGroup by remember { mutableStateOf("MAIN_BOOSTER") }
     var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
 
     // Lấy userId từ SharedPreferences
     val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-    val userId = sharedPreferences.getLong("user_id", 1L) // Mặc định userId = 1 nếu không tìm thấy
+    val userId = sharedPreferences.getLong("user_id", 1L) // Cần lấy từ AuthViewModel
 
     // Tải dữ liệu danh mục
     LaunchedEffect(categoryId) {
+        if (categoryId <= 0) {
+            Log.e("EditCategoryScreen", "Invalid categoryId: $categoryId")
+            Toast.makeText(context, "Danh mục không hợp lệ", Toast.LENGTH_SHORT).show()
+            navController.navigate("collections") {
+                popUpTo("collections") { inclusive = false }
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
+        }
+
         try {
+            Log.d("EditCategoryScreen", "Fetching category with ID: $categoryId")
             val category = repository.getCategoryById(categoryId)
             if (category != null) {
                 categoryName = category.name
                 selectedGroup = category.group
+                Log.d("EditCategoryScreen", "Category loaded: $category")
             } else {
+                Log.w("EditCategoryScreen", "Category not found for ID: $categoryId")
+                error = "Không tìm thấy danh mục"
                 Toast.makeText(context, "Không tìm thấy danh mục", Toast.LENGTH_SHORT).show()
+                navController.navigate("collections") {
+                    popUpTo("collections") { inclusive = false }
+                    launchSingleTop = true
+                }
             }
         } catch (e: Exception) {
+            Log.e("EditCategoryScreen", "Error fetching category: ${e.message}")
+            error = "Lỗi: ${e.message}"
             Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+            navController.navigate("collections") {
+                popUpTo("collections") { inclusive = false }
+                launchSingleTop = true
+            }
         } finally {
             isLoading = false
         }
@@ -91,7 +117,7 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
                 )
             }
             Text(
-                text = "Sửa Danh Mục",
+                text = "Sửa danh mục",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E3A8A)
@@ -113,6 +139,13 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
                 color = Color.Gray,
                 modifier = Modifier.padding(16.dp)
             )
+        } else if (error != null) {
+            Text(
+                text = error!!,
+                fontSize = 16.sp,
+                color = Color.Red,
+                modifier = Modifier.padding(16.dp)
+            )
         } else {
             OutlinedTextField(
                 value = categoryName,
@@ -129,26 +162,32 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
                     .padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                RadioButton(
-                    selected = selectedGroup == "MAIN_BOOSTER",
-                    onClick = { selectedGroup = "MAIN_BOOSTER" }
-                )
-                Text(
-                    text = "Main Booster",
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .weight(1f)
-                )
-                RadioButton(
-                    selected = selectedGroup == "ANOTHER_SAVED_LIST",
-                    onClick = { selectedGroup = "ANOTHER_SAVED_LIST" }
-                )
-                Text(
-                    text = "Another Saved List",
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .weight(1f)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    RadioButton(
+                        selected = selectedGroup == "MAIN_BOOSTER",
+                        onClick = { selectedGroup = "MAIN_BOOSTER" }
+                    )
+                    Text(
+                        text = "Main Booster",
+                        fontSize = 16.sp
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    RadioButton(
+                        selected = selectedGroup == "ANOTHER_SAVED_LIST",
+                        onClick = { selectedGroup = "ANOTHER_SAVED_LIST" }
+                    )
+                    Text(
+                        text = "Another Saved List",
+                        fontSize = 16.sp
+                    )
+                }
             }
 
             Button(
@@ -158,11 +197,15 @@ fun EditCategoryScreen(navController: NavController, categoryId: Long) {
                     } else {
                         coroutineScope.launch {
                             try {
-                                repository.updateCategory(categoryId, categoryName, selectedGroup, userId)
+                                val updatedCategory = repository.updateCategory(categoryId, categoryName, selectedGroup, userId)
                                 Toast.makeText(context, "Cập nhật danh mục thành công", Toast.LENGTH_SHORT).show()
-                                navController.navigate("collections")
+                                navController.navigate("collections") {
+                                    popUpTo("collections") { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Log.e("EditCategoryScreen", "Error updating category: ${e.message}")
+                                Toast.makeText(context, "Lỗi cập nhật: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }

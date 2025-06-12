@@ -1,6 +1,7 @@
 package com.example.documentmanagerapp.components
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.documentmanagerapp.components.context.AuthViewModelFactory
@@ -32,62 +36,174 @@ import com.example.documentmanagerapp.utils.data.Category
 import com.example.documentmanagerapp.utils.repository.CollectionsRepository
 import kotlinx.coroutines.launch
 
-@Composable
-fun CollectionsScreen(navController: NavController) {
-    val context = LocalContext.current
-    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
-    val collectionsRepository = CollectionsRepository(context)
-    val coroutineScope = rememberCoroutineScope()
+// ViewModel để quản lý logic và trạng thái
+class CollectionsViewModel(
+    private val repository: CollectionsRepository,
+    private val authViewModel: AuthViewModel
+) : ViewModel() {
+    var categories by mutableStateOf<List<Category>>(emptyList())
+        private set
+    var documentCounts by mutableStateOf<Map<Long, Int>>(emptyMap())
+        private set
+    var loading by mutableStateOf(true)
+    var error by mutableStateOf<String?>(null)
 
-    val user by authViewModel.user.observeAsState()
-    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
-    var documentCounts by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var isMainBoosterExpanded by remember { mutableStateOf(true) }
-    var isAnotherSavedListExpanded by remember { mutableStateOf(false) }
-    var sortOrder by remember { mutableStateOf("asc") }
-    var isGridView by remember { mutableStateOf(true) }
-    var dialogCategory by remember { mutableStateOf<Category?>(null) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    val emojis = listOf("🌈", "😺", "🧠", "🛸")
-    val anotherEmojis = listOf("✈️", "💼", "🎯")
-
-    // Gọi API khi màn hình được focus
-    LaunchedEffect(user) {
-        user?.id?.let { userId ->
+    fun fetchData(userId: Long) {
+        viewModelScope.launch {
+            loading = true
+            error = null
             try {
-                val (newCategories, newCounts) = collectionsRepository.fetchData(userId)
+                val (newCategories, newCounts) = repository.fetchData(userId)
                 categories = newCategories
                 documentCounts = newCounts
-                error = null
+                Log.d("CollectionsViewModel", "Fetched ${categories.size} categories")
             } catch (e: Exception) {
                 error = e.message
+                Log.e("CollectionsViewModel", "Error fetching data: ${e.message}")
             } finally {
                 loading = false
             }
         }
     }
 
-    // Hiển thị lỗi
+    fun deleteCategory(categoryId: Long, userId: Long, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.deleteCategory(categoryId, userId)
+                categories = categories.filter { it.id != categoryId }
+                fetchData(userId) // Làm mới danh sách
+                onSuccess()
+                Log.d("CollectionsViewModel", "Deleted category: $categoryId")
+            } catch (e: Exception) {
+                onError(e.message ?: "Lỗi không xác định")
+                Log.e("CollectionsViewModel", "Error deleting category: ${e.message}")
+            }
+        }
+    }
+
+    fun checkCategoryExists(categoryId: Long, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val category = repository.getCategoryById(categoryId)
+                onResult(category != null)
+            } catch (e: Exception) {
+                onResult(false)
+                Log.e("CollectionsViewModel", "Error checking category: ${e.message}")
+            }
+        }
+    }
+
+    fun sortCategories(order: String) {
+        categories = categories.sortedBy { it.name }.let {
+            if (order == "desc") it.reversed() else it
+        }
+    }
+}
+
+class CollectionsViewModelFactory(
+    private val repository: CollectionsRepository,
+    private val authViewModel: AuthViewModel
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CollectionsViewModel::class.java)) {
+            return CollectionsViewModel(repository, authViewModel) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+@Composable
+fun CollectionsScreen(navController: NavController) {
+    val context = LocalContext.current
+    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
+    val repository = CollectionsRepository(context)
+    val viewModel: CollectionsViewModel = viewModel(
+        factory = CollectionsViewModelFactory(repository, authViewModel)
+    )
+    val user by authViewModel.user.observeAsState()
+    val categories by remember { derivedStateOf { viewModel.categories } }
+    val documentCounts by remember { derivedStateOf { viewModel.documentCounts } }
+    val loading by remember { derivedStateOf { viewModel.loading } }
+    val error by remember { derivedStateOf { viewModel.error } }
+
+    var isMainBoosterExpanded by remember { mutableStateOf(true) }
+    var isAnotherSavedListExpanded by remember { mutableStateOf(false) }
+    var sortOrder by remember { mutableStateOf("asc") }
+    var isGridView by remember { mutableStateOf(true) }
+    var dialogCategory by remember { mutableStateOf<Category?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val emojis = listOf("🌈", "😺", "🧠", "🛸")
+    val anotherEmojis = listOf("✈️", "💼", "🎯")
+
+    // Tải dữ liệu khi có userId
+    LaunchedEffect(user?.id) {
+        Log.d("CollectionsScreen", "User ID: ${user?.id}")
+        user?.id?.let { userId ->
+            viewModel.fetchData(userId)
+        } ?: run {
+            viewModel.error = "Không tìm thấy người dùng"
+            viewModel.loading = false
+            Toast.makeText(context, "Vui lòng đăng nhập", Toast.LENGTH_SHORT).show()
+            navController.navigate("login") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    // Xử lý lỗi
     LaunchedEffect(error) {
         error?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            val message = when {
+                it.contains("liên kết") -> "Không thể xóa danh mục vì còn tài liệu liên kết"
+                it.contains("Phiên đăng nhập hết hạn") -> "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại."
+                else -> "Lỗi: $it"
+            }
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            if (it.contains("Phiên đăng nhập hết hạn")) {
+                authViewModel.logout()
+                navController.navigate("login") {
+                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
         }
+    }
+
+    // Sắp xếp danh mục
+    LaunchedEffect(sortOrder) {
+        viewModel.sortCategories(sortOrder)
     }
 
     // Dialog chọn hành động
     dialogCategory?.let { category ->
         AlertDialog(
-            onDismissRequest = { dialogCategory = null },
+            onDismissRequest = {
+                dialogCategory = null
+                showDeleteDialog = false // Reset cả showDeleteDialog
+            },
             title = { Text(category.name) },
             text = {
                 Column {
                     TextButton(
                         onClick = {
-                            dialogCategory = null
-                            navController.navigate("editCategory/${category.id}")
+                            coroutineScope.launch {
+                                viewModel.checkCategoryExists(category.id) { exists ->
+                                    if (exists) {
+                                        dialogCategory = null
+                                        showDeleteDialog = false
+                                        navController.navigate("editCategory/${category.id}")
+                                    } else {
+                                        dialogCategory = null
+                                        showDeleteDialog = false
+                                        Toast.makeText(context, "Danh mục không tồn tại", Toast.LENGTH_SHORT).show()
+                                        user?.id?.let { viewModel.fetchData(it) }
+                                    }
+                                }
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -95,19 +211,17 @@ fun CollectionsScreen(navController: NavController) {
                     ) {
                         Text(
                             text = "Sửa danh mục",
-                            color = Color(0xFF1E3A8A),        // Màu xanh đậm
-                            fontSize = 18.sp,                 // Kích thước chữ
-                            fontWeight = FontWeight.Bold,     // In đậm
-                            letterSpacing = 1.sp,             // Giãn cách chữ
-                            textAlign = TextAlign.Center,     // Căn giữa (nếu cần)
-                            modifier = Modifier.fillMaxWidth() // Kéo rộng để căn giữa hoạt động
+                            color = Color(0xFF1E3A8A),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
-
                     }
                     TextButton(
                         onClick = {
-                            dialogCategory = null
-                            showDeleteDialog = true
+                            showDeleteDialog = true // Chỉ đặt showDeleteDialog, giữ dialogCategory
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -115,20 +229,22 @@ fun CollectionsScreen(navController: NavController) {
                     ) {
                         Text(
                             text = "Xóa danh mục",
-                            color = Color(0xFFFF0000),        // Màu xanh đậm
-                            fontSize = 18.sp,                 // Kích thước chữ
-                            fontWeight = FontWeight.Bold,     // In đậm
-                            letterSpacing = 1.sp,             // Giãn cách chữ
-                            textAlign = TextAlign.Center,     // Căn giữa (nếu cần)
-                            modifier = Modifier.fillMaxWidth() // Kéo rộng để căn giữa hoạt động
+                            color = Color(0xFFFF0000),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
-
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { dialogCategory = null }) {
-                    Text("Hủy", color = Color(0xFF1E3A8A), fontSize=18.sp,fontWeight=FontWeight.Bold)
+                TextButton(onClick = {
+                    dialogCategory = null
+                    showDeleteDialog = false
+                }) {
+                    Text("Hủy", color = Color(0xFF1E3A8A), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -142,18 +258,32 @@ fun CollectionsScreen(navController: NavController) {
                 dialogCategory = null
             },
             title = { Text("Xóa danh mục ${dialogCategory!!.name}") },
-            text = { Text("Bạn có chắc chắn muốn xóa danh mục này?") },
+            text = { Text("Bạn có chắc chắn muốn xóa danh mục này? Nếu danh mục có tài liệu, bạn cần xóa tài liệu trước.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        coroutineScope.launch {
-                            try {
-                                collectionsRepository.deleteCategory(dialogCategory!!.id)
-                                categories = categories.filter { it.id != dialogCategory!!.id }
-                                Toast.makeText(context, "Xóa danh mục thành công", Toast.LENGTH_SHORT).show()
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
+                        user?.id?.let { userId ->
+                            viewModel.deleteCategory(
+                                categoryId = dialogCategory!!.id,
+                                userId = userId,
+                                onSuccess = {
+                                    Toast.makeText(context, "Xóa danh mục thành công", Toast.LENGTH_SHORT).show()
+                                    showDeleteDialog = false
+                                    dialogCategory = null
+                                },
+                                onError = { errorMessage ->
+                                    val message = if (errorMessage.contains("liên kết")) {
+                                        "Không thể xóa danh mục vì còn tài liệu liên kết"
+                                    } else {
+                                        "Lỗi xóa danh mục: $errorMessage"
+                                    }
+                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                    showDeleteDialog = false
+                                    dialogCategory = null
+                                }
+                            )
+                        } ?: run {
+                            Toast.makeText(context, "Lỗi: Không tìm thấy người dùng", Toast.LENGTH_LONG).show()
                             showDeleteDialog = false
                             dialogCategory = null
                         }
@@ -226,7 +356,6 @@ fun CollectionsScreen(navController: NavController) {
         contentPadding = PaddingValues(bottom = 48.dp)
     ) {
         item {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -252,12 +381,7 @@ fun CollectionsScreen(navController: NavController) {
                             tint = Color(0xFF1E3A8A)
                         )
                     }
-                    IconButton(onClick = {
-                        sortOrder = if (sortOrder == "asc") "desc" else "asc"
-                        categories = categories.sortedBy { it.name }.let {
-                            if (sortOrder == "desc") it.reversed() else it
-                        }
-                    }) {
+                    IconButton(onClick = { sortOrder = if (sortOrder == "asc") "desc" else "asc" }) {
                         Icon(
                             imageVector = Icons.Default.CompareArrows,
                             contentDescription = "Sort",
@@ -275,7 +399,6 @@ fun CollectionsScreen(navController: NavController) {
                 }
             }
 
-            // Search Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -317,7 +440,6 @@ fun CollectionsScreen(navController: NavController) {
                 }
             }
 
-            // Error Message
             error?.let { errorText ->
                 Text(
                     text = errorText,
@@ -332,7 +454,6 @@ fun CollectionsScreen(navController: NavController) {
         }
 
         item {
-            // Main Booster Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -382,7 +503,7 @@ fun CollectionsScreen(navController: NavController) {
                             CollectionCard(
                                 navController = navController,
                                 category = category,
-                                count = "${documentCounts[category.id] ?: 0} item${if (documentCounts[category.id] != 1) "s" else ""}",
+                                count = "${documentCounts[category.id] ?: 0} item${if ((documentCounts[category.id] ?: 0) != 1) "s" else ""}",
                                 emoji = emojis[categories.indexOf(category) % emojis.size],
                                 onClick = {
                                     navController.navigate("documentList/${category.id}/${category.name}")
@@ -401,7 +522,7 @@ fun CollectionsScreen(navController: NavController) {
                     CollectionCard(
                         navController = navController,
                         category = category,
-                        count = "${documentCounts[category.id] ?: 0} item${if (documentCounts[category.id] != 1) "s" else ""}",
+                        count = "${documentCounts[category.id] ?: 0} item${if ((documentCounts[category.id] ?: 0) != 1) "s" else ""}",
                         emoji = emojis[categories.indexOf(category) % emojis.size],
                         onClick = {
                             navController.navigate("documentList/${category.id}/${category.name}")
@@ -416,7 +537,6 @@ fun CollectionsScreen(navController: NavController) {
         }
 
         item {
-            // Another Saved List Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -466,7 +586,7 @@ fun CollectionsScreen(navController: NavController) {
                             CollectionCard(
                                 navController = navController,
                                 category = category,
-                                count = "${documentCounts[category.id] ?: 0} item${if (documentCounts[category.id] != 1) "s" else ""}",
+                                count = "${documentCounts[category.id] ?: 0} item${if ((documentCounts[category.id] ?: 0) != 1) "s" else ""}",
                                 emoji = anotherEmojis[categories.indexOf(category) % anotherEmojis.size],
                                 onClick = {
                                     navController.navigate("documentList/${category.id}/${category.name}")
@@ -485,7 +605,7 @@ fun CollectionsScreen(navController: NavController) {
                     CollectionCard(
                         navController = navController,
                         category = category,
-                        count = "${documentCounts[category.id] ?: 0} item${if (documentCounts[category.id] != 1) "s" else ""}",
+                        count = "${documentCounts[category.id] ?: 0} item${if ((documentCounts[category.id] ?: 0) != 1) "s" else ""}",
                         emoji = anotherEmojis[categories.indexOf(category) % anotherEmojis.size],
                         onClick = {
                             navController.navigate("documentList/${category.id}/${category.name}")
