@@ -112,6 +112,19 @@ class DocumentRepository(context: Context) {
             }
         }
     }
+    suspend fun searchDocumentsByFileType(fileTypes: List<String>): List<DocumentData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.searchDocumentsByFileType(fileTypes)
+                val documents = response.results ?: emptyList()
+                Log.d("DocumentRepository", "Searched documents by file type: $documents")
+                documents
+            } catch (e: Exception) {
+                Log.e("DocumentRepository", "Error searching by file type: ${e.message}")
+                throw Exception("Lỗi tìm kiếm theo loại file: ${e.message}")
+            }
+        }
+    }
 
     // Optional: fetch documents + favorites together
     suspend fun fetchUserDocumentsWithFavorites(userId: Long): Pair<List<DocumentData>, List<DocumentData>> {
