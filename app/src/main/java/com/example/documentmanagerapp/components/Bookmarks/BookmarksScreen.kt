@@ -22,8 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
-// Data class representing a bookmark item
+// Data class representing a bookmark item with documentId
 data class BookmarkItem(
+    val documentId: String, // Thêm documentId để truyền khi navigate
     val title: String,
     val emoji: String,
     val time: String,
@@ -101,7 +102,8 @@ fun BookmarksScreen(navController: NavController) {
                 modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
             )
             RenderBookmarkItem(
-                BookmarkItem("Huhuhu", "🌈", "AES - Triền - 15:11", true)
+                item = BookmarkItem("doc1", "Huhuhu", "🌈", "AES - Triền - 15:11", true),
+                navController = navController
             )
         }
 
@@ -117,26 +119,29 @@ fun BookmarksScreen(navController: NavController) {
         }
         items(
             listOf(
-                BookmarkItem("IMG_8530.png", "🌈", "AES - Triền - 13:56", true),
-                BookmarkItem("IMG_8574.png", "😺", "AES - Thứ 5 - 22:56", true),
-                BookmarkItem("Unknown%202.jpeg", "😺", "AES - Thứ 5 - 22:53", true),
-                BookmarkItem("TriTueNhanTaoTienViet.docx", "🤓", "AES - Thứ 5 - 22:13", true),
-                BookmarkItem("IMG_8530.png", "🌈", "AES - Triền - 22:54", true),
-                BookmarkItem("RaiThuHoach.docx", "🌱", "AES - Triền - 22:54", false)
+                BookmarkItem("doc2", "IMG_8530.png", "🌈", "AES - Triền - 13:56", true),
+                BookmarkItem("doc3", "IMG_8574.png", "😺", "AES - Thứ 5 - 22:56", true),
+                BookmarkItem("doc4", "Unknown%202.jpeg", "😺", "AES - Thứ 5 - 22:53", true),
+                BookmarkItem("doc5", "TriTueNhanTaoTienViet.docx", "🤓", "AES - Thứ 5 - 22:13", true),
+                BookmarkItem("doc6", "IMG_8530.png", "🌈", "AES - Triền - 22:54", true),
+                BookmarkItem("doc7", "RaiThuHoach.docx", "🌱", "AES - Triền - 22:54", false)
             )
         ) { item ->
-            RenderBookmarkItem(item)
+            RenderBookmarkItem(item = item, navController = navController)
         }
     }
 }
 
 // Composable function to render a single bookmark item
+// Composable function to render a single bookmark item
 @Composable
-fun RenderBookmarkItem(item: BookmarkItem) {
+fun RenderBookmarkItem(item: BookmarkItem, navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* Handle click */ }
+            .clickable {
+                navController.navigate("fileDetails/${item.documentId}") // Điều hướng với documentId
+            }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

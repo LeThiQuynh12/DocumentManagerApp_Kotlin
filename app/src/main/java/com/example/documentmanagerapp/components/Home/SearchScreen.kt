@@ -613,6 +613,10 @@
 //    val prefs = context.getSharedPreferences("search_prefs", Context.MODE_PRIVATE)
 //    return prefs.getString("recent_searches", "")?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
 //}
+
+
+
+
 package com.example.documentmanagerapp.components
 
 import android.content.Context
@@ -672,6 +676,7 @@ fun SearchScreen(navController: NavHostController) {
     var isSearching by remember { mutableStateOf(false) }
     val searchSuggestions = listOf("Inspiration", "UI/UX Design", "Web Development", "Thảo", "Technology")
     var currentTab by rememberSaveable { mutableStateOf("initial") } // initial, searchFocused, searchResults
+    var isSearchTriggered by rememberSaveable { mutableStateOf(false) } // Thêm trạng thái để kiểm soát tìm kiếm
 
     // Load recent searches from SharedPreferences
     LaunchedEffect(Unit) {
@@ -750,6 +755,7 @@ fun SearchScreen(navController: NavHostController) {
         val keyword = query.trim()
         if (keyword.isEmpty() && selectedTab == null) return
 
+        isSearchTriggered = true // Đặt trạng thái tìm kiếm khi gọi handleSearch
         if (keyword.isNotEmpty()) {
             searchDocumentsByKeyword(keyword) { results ->
                 documents = results
@@ -775,6 +781,7 @@ fun SearchScreen(navController: NavHostController) {
         selectedTab = tabType
         searchQuery = tabName
         currentTab = "searchResults"
+        isSearchTriggered = true // Đặt trạng thái tìm kiếm khi chọn tab
         searchDocumentsByFileType(tabType) { results ->
             documents = results
             val updatedSearches = (listOf(tabName) + recentSearches.filter { it.lowercase() != tabName.lowercase() }).take(8)
@@ -789,6 +796,7 @@ fun SearchScreen(navController: NavHostController) {
         selectedTab = null
         documents = emptyList()
         currentTab = "initial"
+        isSearchTriggered = false // Đặt lại trạng thái tìm kiếm khi xóa
         isSearchFocused = false
         keyboardController?.hide()
     }
@@ -833,7 +841,7 @@ fun SearchScreen(navController: NavHostController) {
                 }
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    onValueChange = { searchQuery = it }, // Chỉ cập nhật query, không gọi handleSearch
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp)
@@ -851,7 +859,7 @@ fun SearchScreen(navController: NavHostController) {
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { handleClearSearch() }) {
+                            IconButton(onClick = { searchQuery = ""; handleClearSearch() }) {
                                 Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF888888))
                             }
                         }
@@ -866,7 +874,10 @@ fun SearchScreen(navController: NavHostController) {
                     ),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { handleSearch() })
+                    keyboardActions = KeyboardActions(onSearch = {
+                        handleSearch() // Gọi handleSearch khi nhấn nút tìm kiếm
+                        keyboardController?.hide()
+                    })
                 )
             }
 
@@ -885,7 +896,7 @@ fun SearchScreen(navController: NavHostController) {
                         }
                     }
                 }
-                documents.isNotEmpty() -> {
+                isSearchTriggered && documents.isNotEmpty() -> { // Chỉ hiển thị kết quả khi tìm kiếm đã được kích hoạt
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -917,7 +928,7 @@ fun SearchScreen(navController: NavHostController) {
                         }
                     }
                 }
-                searchQuery.trim().isNotEmpty() -> {
+                isSearchTriggered && searchQuery.trim().isNotEmpty() && documents.isEmpty() -> { // Hiển thị "Không tìm thấy" khi tìm kiếm không có kết quả
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1004,8 +1015,8 @@ fun SearchScreen(navController: NavHostController) {
                                     text = search,
                                     onClick = {
                                         searchQuery = search
-                                        isSearchFocused = false
                                         handleSearch(search)
+                                        isSearchFocused = false
                                     },
                                     onClear = { removeRecentSearch(recentSearches.indexOf(search)) }
                                 )
@@ -1025,8 +1036,8 @@ fun SearchScreen(navController: NavHostController) {
                                 text = suggestion,
                                 onClick = {
                                     searchQuery = suggestion
-                                    isSearchFocused = false
                                     handleSearch(suggestion)
+                                    isSearchFocused = false
                                 }
                             )
                         }
@@ -1079,8 +1090,8 @@ fun SearchScreen(navController: NavHostController) {
                                     text = search,
                                     onClick = {
                                         searchQuery = search
-                                        isSearchFocused = false
                                         handleSearch(search)
+                                        isSearchFocused = false
                                     },
                                     onClear = { removeRecentSearch(recentSearches.indexOf(search)) }
                                 )
@@ -1100,8 +1111,8 @@ fun SearchScreen(navController: NavHostController) {
                                 text = suggestion,
                                 onClick = {
                                     searchQuery = suggestion
-                                    isSearchFocused = false
                                     handleSearch(suggestion)
+                                    isSearchFocused = false
                                 }
                             )
                         }

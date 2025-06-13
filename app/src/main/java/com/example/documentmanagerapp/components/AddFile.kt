@@ -653,11 +653,8 @@ fun AddFileScreen(
                                                                 val route = "documentList/${selectedCategory.id}/${selectedCategory.name}"
                                                                 navController.navigate(route)
                                                                 screenMode = "initial"
-
-
-
                                                             } else {
-                                                                Toast.makeText(context, "Failed to add link", Toast.LENGTH_SHORT).show()
+                                                              Toast.makeText(context, "Failed to add link", Toast.LENGTH_SHORT).show()
                                                             }
                                                         } catch (e: Exception) {
                                                             Log.e("AddFileScreen", "Error adding link: ${e.message}")
