@@ -66,6 +66,21 @@ class CollectionsViewModel(
         }
     }
 
+//    fun deleteCategory(categoryId: Long, userId: Long, onSuccess: () -> Unit, onError: (String) -> Unit) {
+//        viewModelScope.launch {
+//            try {
+//                repository.deleteCategory(categoryId, userId)
+//                categories = categories.filter { it.id != categoryId }
+//                fetchData(userId) // Làm mới danh sách
+//                onSuccess()
+//                Log.d("CollectionsViewModel", "Deleted category: $categoryId")
+//            } catch (e: Exception) {
+//                onError(e.message ?: "Lỗi không xác định")
+//                Log.e("CollectionsViewModel", "Error deleting category: ${e.message}")
+//            }
+//        }
+//    }
+
     fun deleteCategory(categoryId: Long, userId: Long, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {
@@ -75,7 +90,7 @@ class CollectionsViewModel(
                 onSuccess()
                 Log.d("CollectionsViewModel", "Deleted category: $categoryId")
             } catch (e: Exception) {
-                onError(e.message ?: "Lỗi không xác định")
+                onError(e.message ?: "Lỗi xóa danh mục không xác định")
                 Log.e("CollectionsViewModel", "Error deleting category: ${e.message}")
             }
         }
@@ -259,6 +274,8 @@ fun CollectionsScreen(navController: NavController) {
             },
             title = { Text("Xóa danh mục ${dialogCategory!!.name}") },
             text = { Text("Bạn có chắc chắn muốn xóa danh mục này? Nếu danh mục có tài liệu, bạn cần xóa tài liệu trước.") },
+
+
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -272,12 +289,7 @@ fun CollectionsScreen(navController: NavController) {
                                     dialogCategory = null
                                 },
                                 onError = { errorMessage ->
-                                    val message = if (errorMessage.contains("liên kết")) {
-                                        "Không thể xóa danh mục vì còn tài liệu liên kết"
-                                    } else {
-                                        "Lỗi xóa danh mục: $errorMessage"
-                                    }
-                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Lỗi xóa danh mục: $errorMessage", Toast.LENGTH_LONG).show()
                                     showDeleteDialog = false
                                     dialogCategory = null
                                 }
@@ -292,6 +304,7 @@ fun CollectionsScreen(navController: NavController) {
                     Text("Xóa", color = Color(0xFF1E90FF))
                 }
             },
+
             dismissButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
@@ -406,7 +419,7 @@ fun CollectionsScreen(navController: NavController) {
                     .background(Color(0xFFE6F0FA))
                     .clickable { navController.navigate("search") }
                     .padding(horizontal = 12.dp, vertical = 4.dp)
-                    .padding(bottom = 7.dp)
+                    .padding(bottom = 1.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -650,14 +663,14 @@ fun CollectionCard(
             ) {
                 Text(
                     text = "📁",
-                    fontSize = 36.sp
+                    fontSize = 40.sp
                 )
                 Text(
                     text = emoji,
                     fontSize = 20.sp,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp)
+                        .padding(end = 19.dp)
                 )
             }
         }

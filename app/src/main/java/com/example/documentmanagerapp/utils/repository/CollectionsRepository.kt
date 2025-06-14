@@ -86,14 +86,43 @@ class CollectionsRepository(private val context: Context) {
             }
         }
 
+
+//    suspend fun deleteCategory(categoryId: Long, userId: Long) =
+//        withContext(Dispatchers.IO) {
+//            try {
+//                // Kiểm tra tài liệu liên kết
+//                val documents = getDocuments(userId)
+//                if (documents.any { it.category?.id == categoryId }) {
+//                    throw Exception("Danh mục có tài liệu liên kết, không thể xóa")
+//                }
+//                val response = apiService.deleteCategory(categoryId)
+//                Log.d("CollectionsRepository", "Delete response: $response")
+//                if (response.isSuccessful) {
+//                    val body = response.body()
+//                    if (response.code() == 204 || (body != null && body.status_code == 200)) {
+//                        Log.d("CollectionsRepository", "Deleted category: $categoryId")
+//                    } else {
+//                        throw Exception(body?.message ?: "Lỗi xóa danh mục: HTTP ${response.code()}")
+//                    }
+//                } else {
+//                    throw HttpException(response)
+//                }
+//            } catch (e: HttpException) {
+//                Log.e("CollectionsRepository", "HTTP error deleting category: ${e.code()} - ${e.message()}")
+//                if (e.code() == 401) {
+//                    throw Exception("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.")
+//                }
+//                throw Exception("Không thể xóa danh mục: HTTP ${e.code()} - ${e.message}")
+//            } catch (e: Exception) {
+//                Log.e("CollectionsRepository", "Error deleting category: ${e.message}")
+//                throw e
+//            }
+//        }
+
+
     suspend fun deleteCategory(categoryId: Long, userId: Long) =
         withContext(Dispatchers.IO) {
             try {
-                // Kiểm tra tài liệu liên kết
-                val documents = getDocuments(userId)
-                if (documents.any { it.category?.id == categoryId }) {
-                    throw Exception("Danh mục có tài liệu liên kết, không thể xóa")
-                }
                 val response = apiService.deleteCategory(categoryId)
                 Log.d("CollectionsRepository", "Delete response: $response")
                 if (response.isSuccessful) {
@@ -111,10 +140,10 @@ class CollectionsRepository(private val context: Context) {
                 if (e.code() == 401) {
                     throw Exception("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.")
                 }
-                throw Exception("Không thể xóa danh mục: HTTP ${e.code()} - ${e.message}")
+                throw Exception("Lỗi xóa danh mục: HTTP ${e.code()} - ${e.message}")
             } catch (e: Exception) {
                 Log.e("CollectionsRepository", "Error deleting category: ${e.message}")
-                throw e
+                throw Exception("Lỗi xóa danh mục: ${e.message}")
             }
         }
 
