@@ -1,4 +1,3 @@
-
 package com.example.documentmanagerapp.components.Home
 
 import android.util.Log
@@ -22,6 +21,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.documentmanagerapp.R
@@ -31,9 +33,67 @@ import com.example.documentmanagerapp.utils.data.BookmarkData
 import com.example.documentmanagerapp.utils.data.Category
 import com.example.documentmanagerapp.utils.repository.BookmarkRepository
 import com.example.documentmanagerapp.utils.repository.CollectionsRepository
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+
+class HomeViewModel(
+    private val collectionsRepository: CollectionsRepository,
+    private val bookmarkRepository: BookmarkRepository,
+    private val authViewModel: AuthViewModel
+) : ViewModel() {
+    var bookmarks by mutableStateOf<List<BookmarkData>>(emptyList())
+        private set
+    var categories by mutableStateOf<List<Category>>(emptyList())
+        private set
+    var documentCounts by mutableStateOf<Map<Long, Int>>(emptyMap())
+        private set
+    var loading by mutableStateOf(false)
+        private set
+    var error by mutableStateOf<String?>(null)
+        private set
+
+    fun fetchData(userId: Long) {
+        viewModelScope.launch {
+            loading = true
+            try {
+                // Run fetch operations in parallel
+                val categoriesDeferred = async { collectionsRepository.fetchData(userId) }
+                val bookmarksDeferred = async { bookmarkRepository.getBookmarksByUserId(userId) }
+
+                // Await results
+                val (fetchedCategories, fetchedCounts) = categoriesDeferred.await()
+                val fetchedBookmarks = bookmarksDeferred.await()
+
+                categories = fetchedCategories
+                documentCounts = fetchedCounts
+                bookmarks = fetchedBookmarks.sortedByDescending { it.createdAt }
+                error = null
+                Log.d("HomeViewModel", "Fetched Categories: $fetchedCategories, Bookmarks: $fetchedBookmarks")
+            } catch (e: Exception) {
+                error = e.message
+                Log.e("HomeViewModel", "Error fetching data: ${e.message}")
+            } finally {
+                loading = false
+            }
+        }
+    }
+}
+
+class HomeViewModelFactory(
+    private val collectionsRepository: CollectionsRepository,
+    private val bookmarkRepository: BookmarkRepository,
+    private val authViewModel: AuthViewModel
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
+            return HomeViewModel(collectionsRepository, bookmarkRepository, authViewModel) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
 
 @Composable
 fun HomeScreen(
@@ -44,38 +104,22 @@ fun HomeScreen(
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
     val collectionsRepository = CollectionsRepository(context)
     val bookmarkRepository = BookmarkRepository(context)
-    val coroutineScope = rememberCoroutineScope()
-
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModelFactory(collectionsRepository, bookmarkRepository, authViewModel)
+    )
     val userState = authViewModel.user.observeAsState()
     val user = userState.value
 
-    var bookmarks by remember { mutableStateOf<List<BookmarkData>>(emptyList()) }
-    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
-    var documentCounts by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val bookmarks by remember { derivedStateOf { viewModel.bookmarks } }
+    val categories by remember { derivedStateOf { viewModel.categories } }
+    val documentCounts by remember { derivedStateOf { viewModel.documentCounts } }
+    val loading by remember { derivedStateOf { viewModel.loading } }
+    val error by remember { derivedStateOf { viewModel.error } }
     val emojis = listOf("🌈", "😺", "🧠", "🛸")
 
-    LaunchedEffect(user) {
+    LaunchedEffect(user?.id) {
         user?.id?.let { userId ->
-            loading = true
-            try {
-                val (fetchedCategories, fetchedCounts) = collectionsRepository.fetchData(userId)
-                categories = fetchedCategories
-                documentCounts = fetchedCounts
-                error = null
-                Log.d("HomeScreen", "Fetched Categories: $fetchedCategories")
-
-                // Fetch bookmarks
-                val fetchedBookmarks = bookmarkRepository.getBookmarksByUserId(userId)
-                bookmarks = fetchedBookmarks.sortedByDescending { it.createdAt }
-                Log.d("HomeScreen", "Fetched Bookmarks: $fetchedBookmarks")
-            } catch (e: Exception) {
-                error = e.message
-                Log.e("HomeScreen", "Error fetching data: ${e.message}")
-            } finally {
-                loading = false
-            }
+            viewModel.fetchData(userId)
         }
     }
 
@@ -211,11 +255,13 @@ fun HomeScreen(
                 BookmarkItem(
                     bookmark = bookmark,
                     onClick = {
-                        navController.navigate("fileDetails/${bookmark.document?.id}")
+                        bookmark.document.id?.let { id ->
+                            navController.navigate("fileDetails/$id")
+                        }
                     },
                     onMoreClick = {
-                        showBookmarkDialog(context, bookmark, bookmarkRepository, coroutineScope) {
-                            bookmarks = bookmarks.filter { it.id != bookmark.id }
+                        showBookmarkDialog(context, bookmark, bookmarkRepository, viewModel) {
+                            viewModel.fetchData(user?.id ?: return@showBookmarkDialog)
                         }
                     }
                 )
@@ -260,7 +306,7 @@ fun BookmarkItem(
                 color = Color.Black
             )
             Text(
-                text =  bookmark.document.category?.name ?: "Unknown Category",
+                text = bookmark.document.category?.name ?: "Unknown Category",
                 fontSize = 12.sp,
                 color = Color(0xFF888888)
             )
@@ -274,8 +320,17 @@ fun BookmarkItem(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${ bookmark.document.category?.name } • ${
-                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(bookmark.createdAt)
+                    text = "${bookmark.document.category?.name ?: "Unsorted"} • ${
+                        try {
+                            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US)
+                            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                            bookmark.createdAt?.let { createdAt ->
+                                isoFormat.parse(createdAt)?.let { timeFormat.format(it) } ?: "N/A"
+                            } ?: "N/A"
+                        } catch (e: Exception) {
+                            Log.e("BookmarkItem", "Error parsing date: ${bookmark.createdAt}, ${e.message}")
+                            "N/A"
+                        }
                     }",
                     fontSize = 12.sp,
                     color = Color(0xFF888888)
@@ -395,33 +450,36 @@ private fun showBookmarkDialog(
     context: android.content.Context,
     bookmark: BookmarkData,
     repository: BookmarkRepository,
-    scope: kotlinx.coroutines.CoroutineScope,
-    onBookmarkDeleted: () -> Unit
+    viewModel: HomeViewModel,
+    onBookmarkToggled: () -> Unit
 ) {
     androidx.appcompat.app.AlertDialog.Builder(context)
         .setTitle(bookmark.document.documentName)
-        .setItems(arrayOf("Edit Bookmark", "Delete Bookmark")) { _, which ->
+        .setItems(arrayOf("Edit Bookmark", "Toggle Favorite")) { _, which ->
             when (which) {
                 0 -> {
                     // Navigate to edit bookmark screen if implemented
                     // navController.navigate("editBookmark/${bookmark.id}")
                 }
                 1 -> {
-                    scope.launch {
+                    viewModel.viewModelScope.launch {
                         try {
-                            bookmark.id?.let { id ->
-                                repository.deleteBookmark(id)
+                            bookmark.document.id?.let { documentId ->
+                                repository.toggleFavorite(documentId)
+                                onBookmarkToggled()
+                                Toast.makeText(
+                                    context,
+                                    if (bookmark.isFavorite) "Đã xóa khỏi yêu thích" else "Đã thêm vào yêu thích",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
-
-                            onBookmarkDeleted()
-                            Toast.makeText(context, "Bookmark deleted", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
-                            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
             }
         }
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton("Hủy", null)
         .show()
 }

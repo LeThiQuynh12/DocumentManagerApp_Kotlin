@@ -1,37 +1,65 @@
 package com.example.documentmanagerapp.components.Login
+
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import com.example.documentmanagerapp.context.AuthViewModel
-import com.example.documentmanagerapp.components.context.AuthViewModelFactory
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.navigation.NavController
+import com.example.documentmanagerapp.components.context.AuthViewModelFactory
+import com.example.documentmanagerapp.context.AuthViewModel
+import kotlinx.coroutines.launch
+
 @Composable
 fun RegisterScreen(navController: NavController) {
+    val context = LocalContext.current
+    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
+    val coroutineScope = rememberCoroutineScope()
+    val error by authViewModel.error.observeAsState()
+    val loading by authViewModel.loading.observeAsState(false)
+    val user by authViewModel.user.observeAsState()
+
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -40,6 +68,23 @@ fun RegisterScreen(navController: NavController) {
     var showConfirmPassword by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
+
+    // Hiển thị thông báo lỗi bằng Toast
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Hiển thị Toast và chuyển đến màn hình đăng nhập sau khi đăng ký thành công
+    LaunchedEffect(user) {
+        if (user != null) {
+            Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
+            navController.navigate("login") {
+                popUpTo("register") { inclusive = true }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -53,7 +98,7 @@ fun RegisterScreen(navController: NavController) {
         IconButton(onClick = { navController.popBackStack() }) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = "Quay lại",
                 tint = Color(0xFF1E3A8A)
             )
         }
@@ -74,14 +119,14 @@ fun RegisterScreen(navController: NavController) {
             modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
         )
 
-        // Các trường input
+        // Các trường nhập liệu
         OutlinedTextField(
             value = fullName,
             onValueChange = { fullName = it },
             label = { Text("Họ tên") },
             placeholder = { Text("Nhập họ tên") },
             leadingIcon = {
-                Icon(imageVector = Icons.Default.Person, contentDescription = "User")
+                Icon(imageVector = Icons.Default.Person, contentDescription = "Người dùng")
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -109,13 +154,13 @@ fun RegisterScreen(navController: NavController) {
             label = { Text("Mật khẩu") },
             placeholder = { Text("Nhập mật khẩu") },
             leadingIcon = {
-                Icon(imageVector = Icons.Default.Lock, contentDescription = "Password")
+                Icon(imageVector = Icons.Default.Lock, contentDescription = "Mật khẩu")
             },
             trailingIcon = {
                 IconButton(onClick = { showPassword = !showPassword }) {
                     Icon(
                         imageVector = if (showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = "Toggle Password"
+                        contentDescription = "Bật/tắt hiển thị mật khẩu"
                     )
                 }
             },
@@ -132,13 +177,13 @@ fun RegisterScreen(navController: NavController) {
             label = { Text("Nhập lại mật khẩu") },
             placeholder = { Text("Nhập lại mật khẩu") },
             leadingIcon = {
-                Icon(imageVector = Icons.Default.Lock, contentDescription = "Confirm Password")
+                Icon(imageVector = Icons.Default.Lock, contentDescription = "Xác nhận mật khẩu")
             },
             trailingIcon = {
                 IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
                     Icon(
                         imageVector = if (showConfirmPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = "Toggle Confirm Password"
+                        contentDescription = "Bật/tắt hiển thị xác nhận mật khẩu"
                     )
                 }
             },
@@ -168,19 +213,51 @@ fun RegisterScreen(navController: NavController) {
         }
 
         Button(
-            onClick = { /* Xử lý đăng ký */ },
+            onClick = {
+                when {
+                    fullName.isBlank() -> {
+                        Toast.makeText(context, "Vui lòng nhập họ tên", Toast.LENGTH_SHORT).show()
+                    }
+                    email.isBlank() -> {
+                        Toast.makeText(context, "Vui lòng nhập email", Toast.LENGTH_SHORT).show()
+                    }
+                    password.isBlank() -> {
+                        Toast.makeText(context, "Vui lòng nhập mật khẩu", Toast.LENGTH_SHORT).show()
+                    }
+                    confirmPassword.isBlank() -> {
+                        Toast.makeText(context, "Vui lòng nhập lại mật khẩu", Toast.LENGTH_SHORT).show()
+                    }
+                    password != confirmPassword -> {
+                        Toast.makeText(context, "Mật khẩu không khớp", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        coroutineScope.launch {
+                            val success = authViewModel.register(fullName, email, password)
+                            // Toast được xử lý trong LaunchedEffect(user)
+                        }
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 24.dp, bottom = 32.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            enabled = !loading
         ) {
-            Text(
-                text = "Đăng Ký",
-                fontSize = 16.sp,
-                color = Color.White,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            if (loading) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Text(
+                    text = "Đăng Ký",
+                    fontSize = 16.sp,
+                    color = Color.White,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
         }
     }
 }

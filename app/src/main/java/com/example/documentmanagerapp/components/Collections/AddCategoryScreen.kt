@@ -1,6 +1,7 @@
 package com.example.documentmanagerapp.components
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,21 +34,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.documentmanagerapp.components.context.AuthViewModelFactory
+import com.example.documentmanagerapp.context.AuthViewModel
 import com.example.documentmanagerapp.utils.repository.CollectionsRepository
 import kotlinx.coroutines.launch
 
 @Composable
-fun AddCategoryScreen(navController: NavController) {
+fun AddCategoryScreen(navController: NavController, authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(LocalContext.current))) {
     val context = LocalContext.current
     val repository = CollectionsRepository(context)
     val coroutineScope = rememberCoroutineScope()
     var categoryName by remember { mutableStateOf("") }
     var selectedGroup by remember { mutableStateOf("MAIN_BOOSTER") }
-
-    // Lấy userId từ SharedPreferences
-    val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-    val userId = sharedPreferences.getLong("user_id", 1L) // Mặc định userId = 1 nếu không tìm thấy
+    val user by authViewModel.user.observeAsState()
 
     Column(
         modifier = Modifier
@@ -77,7 +79,6 @@ fun AddCategoryScreen(navController: NavController) {
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E3A8A)
             )
-            // Spacer để căn chỉnh
             IconButton(onClick = {}, enabled = false) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
@@ -129,14 +130,22 @@ fun AddCategoryScreen(navController: NavController) {
                 if (categoryName.isBlank()) {
                     Toast.makeText(context, "Vui lòng nhập tên danh mục", Toast.LENGTH_SHORT).show()
                 } else {
-                    coroutineScope.launch {
-                        try {
-                            repository.addCategory(categoryName, selectedGroup, userId)
-                            Toast.makeText(context, "Thêm danh mục thành công", Toast.LENGTH_SHORT).show()
-                            navController.navigate("collections")
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                    user?.id?.let { userId ->
+                        Log.d("AddCategoryScreen", "Adding category for userId: $userId")
+                        coroutineScope.launch {
+                            try {
+                                repository.addCategory(categoryName, selectedGroup, userId)
+                                Toast.makeText(context, "Thêm danh mục thành công", Toast.LENGTH_SHORT).show()
+                                navController.navigate("collections")
+                            } catch (e: Exception) {
+                                Log.e("AddCategoryScreen", "Error adding category: ${e.message}")
+                                Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
                         }
+                    } ?: run {
+                        Log.e("AddCategoryScreen", "User is null, cannot add category")
+                        Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_LONG).show()
+                        navController.navigate("login")
                     }
                 }
             },

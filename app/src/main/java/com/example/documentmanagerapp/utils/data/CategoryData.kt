@@ -74,3 +74,5 @@ data class AddCategoryRequest(
         @SerializedName("id") val id: Long
     )
 }
+
+

@@ -6,13 +6,14 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.documentmanagerapp.components.Bookmarks.BookmarksScreen
+
 import com.example.documentmanagerapp.components.Collections.DocumentListScreen
 import com.example.documentmanagerapp.components.Collections.FileDetailsScreen
 import com.example.documentmanagerapp.components.Home.HomeScreen
 import com.example.documentmanagerapp.components.Login.ForgetPasswordScreen
 import com.example.documentmanagerapp.components.Login.RegisterScreen
 import com.example.documentmanagerapp.components.Setting.SettingScreen
+import com.example.documentmanagerapp.screens.BookmarkScreen
 
 @Composable
 fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modifier) {
@@ -24,7 +25,7 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
                 onSearchClick = { navController.navigate("search") }
             )
         }
-        composable("bookmarks") { BookmarksScreen(navController) }
+        composable("bookmarks") { BookmarkScreen(navController) }
         composable("search") { SearchScreen(navController) }
         composable("add") { AddFileScreen(navController) }
         composable("collections") { CollectionsScreen(navController) }

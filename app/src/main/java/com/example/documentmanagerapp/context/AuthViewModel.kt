@@ -12,6 +12,7 @@ import com.example.documentmanagerapp.utils.ApiClient
 import com.example.documentmanagerapp.utils.ApiService
 import com.example.documentmanagerapp.utils.User
 import com.example.documentmanagerapp.utils.LoginRequest
+import com.example.documentmanagerapp.utils.RegisterRequest
 import com.example.documentmanagerapp.utils.TokenManager
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
@@ -31,7 +32,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     private val _user = MutableLiveData<User?>(null)
     val user: LiveData<User?> = _user
 
-    private val _loading = MutableLiveData(true)
+    private val _loading = MutableLiveData(false)
     val loading: LiveData<Boolean> = _loading
 
     private val _error = MutableLiveData<String?>(null)
@@ -57,17 +58,18 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 Log.d("AuthViewModel", "User loaded from storage: $user")
             } else {
                 Log.d("AuthViewModel", "No user found in storage")
+                _user.postValue(null)
             }
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error loading user: ${e.message}")
-            _error.postValue("Lỗi tải thông tin người dùng: ${e.message}")
+            // Không post error để tránh thông báo không cần thiết
         }
     }
 
     suspend fun login(username: String, password: String): Boolean {
         _loading.postValue(true)
         try {
-            Log.d("AuthViewModel", "Login attempt with username: $username, password: ****")
+            Log.d("AuthViewModel", "Login attempt with username: $username")
             val response = apiService.login(LoginRequest(username, password))
             Log.d("AuthViewModel", "Login API response: $response")
             val result = response.results
@@ -79,7 +81,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             tokenManager.saveTokens(
                 accessToken = result.accessToken,
                 refreshToken = result.refreshToken,
-                accessExpiresIn = result.expiresIn ?: 3600 // Mặc định 1 giờ
+                accessExpiresIn = result.expiresIn ?: 3600
             )
             result.user?.let { user ->
                 saveUserToStorage(user)
@@ -93,9 +95,9 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             return true
         } catch (e: HttpException) {
             val errorMessage = when (e.code()) {
-                400 -> "Đăng nhập thất bại: Thông tin không hợp lệ (HTTP 400)"
-                401 -> "Đăng nhập thất bại: Email hoặc mật khẩu sai"
-                else -> "Đăng nhập thất bại: ${e.message()}"
+                400 -> "Thông tin đăng nhập không hợp lệ"
+                401 -> "Email hoặc mật khẩu sai"
+                else -> "Lỗi đăng nhập: HTTP ${e.code()}"
             }
             Log.e("AuthViewModel", "Login failed: HTTP ${e.code()} - ${e.message()}")
             _error.postValue(errorMessage)
@@ -111,26 +113,24 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
     suspend fun saveUserToStorage(user: User) {
         try {
-            prefs.edit().putString("user", Gson().toJson(user)).commit()
+            prefs.edit().putString("user", Gson().toJson(user)).apply() // Sử dụng apply() thay vì commit()
             _user.postValue(user)
             Log.d("AuthViewModel", "Saved user to storage: $user")
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error saving user: ${e.message}")
-            _error.postValue("Lỗi lưu thông tin người dùng: ${e.message}")
+            // Không post error để tránh thông báo không cần thiết
         }
     }
 
     suspend fun getCurrentUser(forceUpdate: Boolean = false) {
         if (!forceUpdate) {
             loadUserFromStorage()
-            _loading.postValue(false)
             return
         }
         val tokens = tokenManager.getTokens()
         if (tokens?.accessToken == null) {
             Log.w("AuthViewModel", "No access token found, cannot fetch user")
-            _error.postValue("Không tìm thấy token đăng nhập")
-            _loading.postValue(false)
+            _user.postValue(null)
             return
         }
         try {
@@ -141,20 +141,55 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 Log.i("AuthViewModel", "User fetched successfully: ${response.results}")
             } else {
                 Log.e("AuthViewModel", "API returned null user data")
-                _error.postValue("Không nhận được dữ liệu người dùng từ server")
                 _user.postValue(null)
-                prefs.edit().remove("user").commit()
+                prefs.edit().remove("user").apply()
             }
         } catch (e: HttpException) {
             Log.e("AuthViewModel", "HTTP error fetching user: ${e.code()} - ${e.message()}")
-            _error.postValue("Lỗi lấy thông tin người dùng: HTTP ${e.code()}")
-            _user.postValue(null)
-            prefs.edit().remove("user").commit()
+            if (e.code() == 401) {
+                tokenManager.removeTokens()
+                _user.postValue(null)
+                prefs.edit().remove("user").apply()
+            }
+            // Không post error để tránh thông báo không cần thiết
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error fetching user: ${e.message}")
-            _error.postValue("Lỗi lấy thông tin người dùng: ${e.message}")
             _user.postValue(null)
-            prefs.edit().remove("user").commit()
+            prefs.edit().remove("user").apply()
+        } finally {
+            _loading.postValue(false)
+        }
+    }
+
+    suspend fun register(fullName: String, email: String, password: String): Boolean {
+        _loading.postValue(true)
+        try {
+            Log.d("AuthViewModel", "Register attempt with email: $email, fullName: $fullName")
+            val response = apiService.register(RegisterRequest(fullName, email, password))
+            Log.d("AuthViewModel", "Register API response: $response")
+            response.results?.let { user ->
+                _user.postValue(user)
+                Log.i("AuthViewModel", "User registered: $user")
+                _error.postValue(null)
+                return true
+            } ?: run {
+                Log.e("AuthViewModel", "Registration failed: No user data in response")
+                _error.postValue("Đăng ký thất bại: Không nhận được dữ liệu người dùng")
+                return false
+            }
+        } catch (e: HttpException) {
+            val errorMessage = when (e.code()) {
+                400 -> "Thông tin đăng ký không hợp lệ"
+                409 -> "Email đã tồn tại"
+                else -> "Lỗi đăng ký: HTTP ${e.code()}"
+            }
+            Log.e("AuthViewModel", "Register failed: HTTP ${e.code()} - ${e.message()}")
+            _error.postValue(errorMessage)
+            return false
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Register failed: ${e.message}")
+            _error.postValue("Lỗi đăng ký: ${e.message}")
+            return false
         } finally {
             _loading.postValue(false)
         }
@@ -162,7 +197,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
     suspend fun logout() {
         try {
-            prefs.edit().remove("user").commit()
+            prefs.edit().remove("user").apply()
             tokenManager.removeTokens()
             _user.postValue(null)
             isLoggedOut = true

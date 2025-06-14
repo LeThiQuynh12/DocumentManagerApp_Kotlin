@@ -56,6 +56,16 @@ data class UserResponse(
     val results: User?
 )
 
+data class RegisterRequest(
+    val fullName: String,
+    val email: String,
+    val password: String
+)
+
+data class RegisterResponse(
+    val results: User?
+)
+
 interface ApiService : CategoryApiService {
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: RefreshTokenRequest): RefreshTokenResponse
@@ -65,6 +75,9 @@ interface ApiService : CategoryApiService {
 
     @GET("auth/account")
     suspend fun getCurrentUser(): UserResponse
+
+    @POST("users")
+    suspend fun register(@Body request: RegisterRequest): RegisterResponse
 }
 
 class TokenManager(private val context: Context) {

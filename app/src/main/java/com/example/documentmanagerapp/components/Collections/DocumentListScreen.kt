@@ -149,7 +149,7 @@ fun DocumentListScreen(navController: NavController, categoryId: Long?, category
                 viewModel.loading = false
             }
         } ?: run {
-            viewModel.error = "Không tìm thấy người dùng"
+//            viewModel.error = "Không tìm thấy người dùng"
             viewModel.loading = false
            // safeNavigate("login")
         }
@@ -170,8 +170,8 @@ fun DocumentListScreen(navController: NavController, categoryId: Long?, category
     if (showFavoriteDialog) {
         AlertDialog(
             onDismissRequest = { showFavoriteDialog = false },
-            title = { Text("Thêm vào yêu thích thành công") },
-            text = { Text("Tài liệu đã được thêm vào mục yêu thích!") },
+            title = { Text("TAdded to favorites successfully") },
+            text = { Text("Document has been added to favorites!!") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -179,7 +179,7 @@ fun DocumentListScreen(navController: NavController, categoryId: Long?, category
                         showFavoriteDialog = false
                     }
                 ) {
-                    Text("Xem Bookmarks")
+                    Text("View Bookmarks")
                 }
             },
             dismissButton = {

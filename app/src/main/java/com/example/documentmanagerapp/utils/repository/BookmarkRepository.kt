@@ -6,6 +6,8 @@ import com.example.documentmanagerapp.utils.ApiClient
 import com.example.documentmanagerapp.utils.data.BookmarkData
 import com.example.documentmanagerapp.utils.data.BookmarkResponse
 import com.example.documentmanagerapp.utils.service.BookmarkApiService
+import com.example.documentmanagerapp.utils.data.Document
+import com.example.documentmanagerapp.utils.service.CategoryApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -13,75 +15,46 @@ import retrofit2.HttpException
 class BookmarkRepository(context: Context) {
     private val apiService: BookmarkApiService =
         ApiClient.getClient(context).create(BookmarkApiService::class.java)
+    private val categoryApiService: CategoryApiService =
+        ApiClient.getClient(context).create(CategoryApiService::class.java)
 
-//    suspend fun getBookmarksByUserId(userId: Long): List<BookmarkData> {
-//        return withContext(Dispatchers.IO) {
-//            try {
-//                val response = apiService.getBookmarksByUserId(userId)
-//                response.results ?: emptyList()  // ✅ OK vì .results thuộc BookmarkResponse
-//            } catch (e: Exception) {
-//                Log.e("BookmarkRepository", "Error fetching bookmarks: ${e.message}")
-//                throw Exception("Lỗi lấy danh sách bookmark: ${e.message}")
-//            }
-//        }
-//    }
-suspend fun getBookmarksByUserId(userId: Long): List<BookmarkData> {
-    return withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.getBookmarksByUserId(userId)
-            response.results ?: emptyList()
-        } catch (e: Exception) {
-            Log.e("BookmarkRepository", "Error fetching bookmarks: ${e.message}")
-            throw Exception("Lỗi lấy danh sách bookmark: ${e.message}")
-        }
-    }
-}
-
-
-    suspend fun createBookmark(bookmark: BookmarkData): BookmarkData? {
+    suspend fun getBookmarksByUserId(userId: Long): List<BookmarkData> {
         return withContext(Dispatchers.IO) {
             try {
-                apiService.createBookmark(bookmark)
+                Log.d("BookmarkRepository", "Fetching bookmarks for userId: $userId")
+                val response = apiService.getBookmarksByUserId(userId)
+                response.results ?: emptyList()
+            } catch (e: HttpException) {
+                Log.e("BookmarkRepository", "HTTP error: ${e.code()}, ${e.message()}")
+                when (e.code()) {
+                    404 -> emptyList()
+                    else -> throw Exception("Lỗi lấy danh sách bookmark: ${e.message()}")
+                }
             } catch (e: Exception) {
-                Log.e("BookmarkRepository", "Error creating bookmark: ${e.message}")
-                throw Exception("Lỗi tạo bookmark: ${e.message}")
+                Log.e("BookmarkRepository", "Error fetching bookmarks: ${e.message}")
+                throw Exception("Lỗi lấy danh sách bookmark: ${e.message}")
             }
         }
     }
 
-    suspend fun deleteBookmark(bookmarkId: Long) {
-        withContext(Dispatchers.IO) {
-            try {
-                apiService.deleteBookmark(bookmarkId)
-                Log.d("BookmarkRepository", "Deleted bookmark ID: $bookmarkId")
-            } catch (e: Exception) {
-                Log.e("BookmarkRepository", "Error deleting bookmark: ${e.message}")
-                throw Exception("Lỗi xóa bookmark: ${e.message}")
-            }
-        }
-    }
-
-
-    suspend fun toggleFavorite(docId: Long, userId: Long): BookmarkData? {
+    suspend fun toggleFavorite(documentId: Long): Document {
         return withContext(Dispatchers.IO) {
             try {
-                apiService.toggleFavorite(docId, userId)
+                val response = categoryApiService.toggleFavorite(documentId)
+                val updatedDocument = response.results?.results
+                    ?: throw Exception("Invalid toggle favorite response")
+                Log.d("BookmarkRepository", "Toggled favorite for document: $updatedDocument")
+                updatedDocument
+            } catch (e: HttpException) {
+                Log.e("BookmarkRepository", "HTTP error toggling favorite: ${e.code()} - ${e.message()}")
+                if (e.code() == 401) {
+                    throw Exception("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.")
+                }
+                throw Exception("Lỗi server: HTTP ${e.code()}")
             } catch (e: Exception) {
                 Log.e("BookmarkRepository", "Error toggling favorite: ${e.message}")
-                throw Exception("Lỗi chuyển đổi yêu thích: ${e.message}")
+                throw Exception("Lỗi cập nhật trạng thái yêu thích: ${e.message}")
             }
         }
     }
-
-    suspend fun updateBookmark(bookmarkId: Long, bookmark: BookmarkData): BookmarkData? {
-        return withContext(Dispatchers.IO) {
-            try {
-                apiService.updateBookmark(bookmarkId, bookmark)
-            } catch (e: Exception) {
-                Log.e("BookmarkRepository", "Error updating bookmark: ${e.message}")
-                throw Exception("Lỗi cập nhật bookmark: ${e.message}")
-            }
-        }
-    }
-
 }
