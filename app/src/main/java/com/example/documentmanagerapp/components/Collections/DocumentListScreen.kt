@@ -151,7 +151,7 @@ fun DocumentListScreen(navController: NavController, categoryId: Long?, category
         } ?: run {
             viewModel.error = "Không tìm thấy người dùng"
             viewModel.loading = false
-            safeNavigate("login")
+           // safeNavigate("login")
         }
     }
 
@@ -161,7 +161,7 @@ fun DocumentListScreen(navController: NavController, categoryId: Long?, category
             if (message == "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.") {
                 coroutineScope.launch {
                     authViewModel.logout()
-                    safeNavigate("login")
+                   // safeNavigate("login")
                 }
             }
         }

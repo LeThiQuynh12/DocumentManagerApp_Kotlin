@@ -25,7 +25,7 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
             )
         }
         composable("bookmarks") { BookmarksScreen(navController) }
-        composable("search") { SearchScreen() }
+        composable("search") { SearchScreen(navController) }
         composable("add") { AddFileScreen(navController) }
         composable("collections") { CollectionsScreen(navController) }
         composable("settings") { SettingScreen(navController) }

@@ -211,8 +211,7 @@ fun HomeScreen(
                 BookmarkItem(
                     bookmark = bookmark,
                     onClick = {
-                        // Navigate to bookmark details if needed
-                        // navController.navigate("bookmarkDetail/${bookmark.id}")
+                        navController.navigate("fileDetails/${bookmark.document?.id}")
                     },
                     onMoreClick = {
                         showBookmarkDialog(context, bookmark, bookmarkRepository, coroutineScope) {
