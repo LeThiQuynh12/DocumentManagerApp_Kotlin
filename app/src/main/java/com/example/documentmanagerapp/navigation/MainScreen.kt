@@ -11,35 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.documentmanagerapp.components.context.AuthViewModelFactory
 import com.example.documentmanagerapp.context.AuthViewModel
 import androidx.compose.runtime.getValue
-//
-//@Composable
-//fun MainScreen() {
-//    val navController = rememberNavController()
-//    val context = LocalContext.current
-//    val authViewModel: AuthViewModel = AuthViewModelFactory(context).create(AuthViewModel::class.java)
-//
-//    val navBackStackEntry by navController.currentBackStackEntryAsState()
-//    val currentRoute = navBackStackEntry?.destination?.route
-//
-//    // Điều hướng tới login nếu chưa đăng nhập
-//    LaunchedEffect(authViewModel.user.value) {
-//        if (authViewModel.user.value == null) {
-//            navController.navigate("login") {
-//                popUpTo("main") { inclusive = true }
-//            }
-//        }
-//    }
-//
-//    Scaffold(
-//        bottomBar = {
-//            if (currentRoute != "login") {
-//                BottomNavigationBar(navController)
-//            }
-//        }
-//    ) { innerPadding ->
-//        NavHostContainer(navController, Modifier.padding(innerPadding))
-//    }
-//}
+
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
@@ -50,9 +22,22 @@ fun MainScreen() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Gọi đăng xuất ngay khi khởi động ứng dụng
-    LaunchedEffect(Unit) {
-        authViewModel.logout()
-    }
+//    LaunchedEffect(Unit) {
+//        authViewModel.logout()
+//    }
+
+//    LaunchedEffect(Unit) {
+//        val tokens = authViewModel.tokenManager.getTokens()
+//        if (tokens?.accessToken != null) {
+//            // Nếu có accessToken, gọi API lấy user từ server (hoặc dùng cache nếu bạn có)
+//            authViewModel.fetchUserInfo()
+//        } else {
+//            // Không có token → chuyển tới login
+//            navController.navigate("login") {
+//                popUpTo("main") { inclusive = true }
+//            }
+//        }
+//    }
 
     // Điều hướng tới login nếu chưa đăng nhập
     LaunchedEffect(authViewModel.user.value) {

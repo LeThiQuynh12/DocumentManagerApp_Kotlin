@@ -90,7 +90,7 @@ fun SettingScreen(navController: NavHostController) {
         SettingItem(
             icon = Icons.Default.Storage,
             title = "Used Space",
-            onClick = { /* Handle click */ }
+            onClick = { navController.navigate("used_space") }
         )
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))

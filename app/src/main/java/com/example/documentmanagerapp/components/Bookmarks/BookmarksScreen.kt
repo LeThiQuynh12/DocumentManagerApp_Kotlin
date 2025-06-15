@@ -368,7 +368,7 @@ fun BookmarkScreen(navController: NavController) {
                     placeholder = { Text("Search your bookmark", color = Color(0xFFAAAAAA)) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(50.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFFE6F0FA))
                         .clickable { navController.navigate("Search") },

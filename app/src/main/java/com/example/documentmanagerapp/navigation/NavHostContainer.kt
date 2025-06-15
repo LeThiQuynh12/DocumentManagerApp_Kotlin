@@ -13,6 +13,8 @@ import com.example.documentmanagerapp.components.Home.HomeScreen
 import com.example.documentmanagerapp.components.Login.ForgetPasswordScreen
 import com.example.documentmanagerapp.components.Login.RegisterScreen
 import com.example.documentmanagerapp.components.Setting.SettingScreen
+import com.example.documentmanagerapp.components.Setting.UsedSpaceScreen
+
 import com.example.documentmanagerapp.screens.BookmarkScreen
 
 @Composable
@@ -30,6 +32,9 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
         composable("add") { AddFileScreen(navController) }
         composable("collections") { CollectionsScreen(navController) }
         composable("settings") { SettingScreen(navController) }
+
+        composable("used_space") { UsedSpaceScreen(navController) }
+
         composable("addCategory") { AddCategoryScreen(navController) }
         composable("editCategory/{categoryId}") { backStackEntry ->
             EditCategoryScreen(

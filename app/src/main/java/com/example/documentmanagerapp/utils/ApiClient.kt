@@ -7,7 +7,6 @@ import androidx.security.crypto.MasterKey
 import com.example.documentmanagerapp.utils.service.CategoryApiService
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -49,7 +48,8 @@ data class LoginResult(
 data class User(
     val id: Long,
     val email: String,
-    val fullName: String
+    val fullName: String,
+    val role: String
 )
 
 data class UserResponse(
@@ -78,6 +78,8 @@ interface ApiService : CategoryApiService {
 
     @POST("users")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
+
+
 }
 
 class TokenManager(private val context: Context) {
@@ -103,17 +105,26 @@ class TokenManager(private val context: Context) {
             val accessExpiresAt = System.currentTimeMillis() + accessExpiresIn * 1000
             val refreshExpiresAt = System.currentTimeMillis() + refreshExpiresIn * 1000
             val tokens = Tokens(accessToken, refreshToken, accessExpiresAt, refreshExpiresAt)
-            prefs.edit().putString("authTokens", Gson().toJson(tokens)).commit()
+            prefs.edit().putString("authTokens", Gson().toJson(tokens)).apply() // Thay commit() bằng apply()
             Log.d("TokenManager", "Tokens saved: accessToken=$accessToken, expiresAt=$accessExpiresAt")
         } catch (e: Exception) {
             Log.e("TokenManager", "Error saving tokens: ${e.message}")
         }
     }
 
-    suspend fun getTokens(): Tokens? {
+    fun getTokensSync(): Tokens? {
         return try {
             val json = prefs.getString("authTokens", null) ?: return null
-            val tokens = Gson().fromJson(json, Tokens::class.java)
+            Gson().fromJson(json, Tokens::class.java)
+        } catch (e: Exception) {
+            Log.e("TokenManager", "Error retrieving tokens sync: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getTokens(): Tokens? {
+        return try {
+            val tokens = getTokensSync() ?: return null
 
             if (System.currentTimeMillis() > tokens.refreshExpiresAt) {
                 Log.w("TokenManager", "Refresh token expired! Please re-login.")
@@ -129,7 +140,7 @@ class TokenManager(private val context: Context) {
             tokens
         } catch (e: Exception) {
             Log.e("TokenManager", "Error retrieving tokens: ${e.message}")
-            return null
+            null
         }
     }
 
@@ -139,8 +150,7 @@ class TokenManager(private val context: Context) {
             return null
         }
         return try {
-            val apiService = ApiClient.getClientWithoutAuth()
-                .create(ApiService::class.java)
+            val apiService = ApiClient.getClientWithoutAuth().create(ApiService::class.java)
             val response = apiService.refreshToken(RefreshTokenRequest(refreshToken))
             saveTokens(
                 accessToken = response.accessToken,
@@ -151,13 +161,13 @@ class TokenManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e("TokenManager", "Error refreshing token: ${e.message}")
             removeTokens()
-            return null
+            null
         }
     }
 
     suspend fun removeTokens() {
         try {
-            prefs.edit().remove("authTokens").commit()
+            prefs.edit().remove("authTokens").apply() // Thay commit() bằng apply()
             Log.d("TokenManager", "Tokens removed")
         } catch (e: Exception) {
             Log.e("TokenManager", "Error removing tokens: ${e.message}")
@@ -173,11 +183,11 @@ object ApiClient {
             val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
             val authInterceptor = Interceptor { chain ->
                 val tokenManager = TokenManager(context)
-                var tokens = runBlocking { tokenManager.getTokens() }
+                val tokens = tokenManager.getTokensSync() // Sử dụng đồng bộ
                 var request = chain.request().newBuilder()
                     .apply {
                         if (tokens?.accessToken != null) {
-                            addHeader("Authorization", "Bearer ${tokens!!.accessToken}")
+                            addHeader("Authorization", "Bearer ${tokens.accessToken}")
                         }
                     }
                     .build()
@@ -186,13 +196,9 @@ object ApiClient {
 
                 if (response.code == 401) {
                     response.close()
-                    tokens = runBlocking { tokenManager.getTokens() }
-                    if (tokens?.accessToken != null) {
-                        request = request.newBuilder()
-                            .header("Authorization", "Bearer ${tokens.accessToken}")
-                            .build()
-                        response = chain.proceed(request)
-                    }
+                    // Không sử dụng runBlocking, để token hết hạn được xử lý ở tầng cao hơn
+                    Log.w("ApiClient", "Received 401, token may be invalid")
+                    response
                 }
 
                 response
