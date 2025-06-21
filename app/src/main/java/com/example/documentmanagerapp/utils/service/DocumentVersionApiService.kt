@@ -1,6 +1,8 @@
 package com.example.documentmanagerapp.utils.service
 
+import com.example.documentmanagerapp.utils.data.ApiResponse
 import com.example.documentmanagerapp.utils.data.DocumentVersionData
+import com.example.documentmanagerapp.utils.data.DocumentVersionsResponse
 import retrofit2.http.*
 
 interface DocumentVersionApiService {
@@ -9,7 +11,7 @@ interface DocumentVersionApiService {
     @GET("document-versions/document/{docId}")
     suspend fun getVersionsByDocumentId(
         @Path("docId") docId: Long
-    ): List<DocumentVersionData>
+    ): DocumentVersionsResponse
 
     // Tạo một phiên bản mới của tài liệu
     @POST("document-versions")
@@ -22,4 +24,9 @@ interface DocumentVersionApiService {
     suspend fun getVersions(
         @Path("documentId") documentId: Long
     ): List<DocumentVersionData>
+
+    @GET("document-versions/{versionId}")
+    suspend fun getVersionById(
+        @Path("versionId") versionId: Long
+    ): ApiResponse<DocumentVersionData>
 }

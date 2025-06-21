@@ -20,9 +20,17 @@ data class DocumentVersionData(
     @SerializedName("fileSize")
     val fileSize: Long,
 
+    @SerializedName("title")
+    val title: String? = null,
+
     @SerializedName("createdAt")
     val createdAt: Timestamp? = null,
 
     @SerializedName("updatedAt")
     val updatedAt: Timestamp? = null
+)
+
+data class DocumentVersionsResponse(
+    @SerializedName("results")
+    val results: List<DocumentVersionData>?
 )

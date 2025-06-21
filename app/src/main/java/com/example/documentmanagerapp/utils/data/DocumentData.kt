@@ -40,9 +40,14 @@ data class DocumentData(
 data class DocumentResponse(
     val results: List<DocumentData>?
 )
+
+data class DocumentsResponse(
+    val results: DocumentData?
+)
 data class UserData(
     val id: Long,
-    val username: String // Thêm các trường khác nếu cần
+    val username: String, // Thêm các trường khác nếu cần
+    val email: String
 )
 data class DocumentLinkRequest(
     @SerializedName("documentName")

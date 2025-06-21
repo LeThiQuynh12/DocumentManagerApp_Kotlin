@@ -17,11 +17,9 @@ interface FilesApiService {
         @Query("password") password: String,
         @Query("userId") userId: Long,
         @Query("categoryId") categoryId: Long,
-        @Query("documentId") documentId: Long? = null
+        @Query("documentId") documentId: Long? = null,
+        @Query("documentName") documentName: String? = null
     ): FileUploadResponse
-
-
-
 
     @Multipart
     @POST("files/multi")
@@ -68,4 +66,16 @@ interface FilesApiService {
     suspend fun getDocumentSize(
         @Query("documentId") documentId: Long
     ): ApiResponse<Map<String, Any>>
+
+    @GET("files/presigned-url")
+    suspend fun getPresignedUrl(
+        @Query("documentId") documentId: Long,
+        @Query("password") password: String,
+        @Query("versionNumber") versionNumber: Int? = null
+    ): ApiResponse<String>
+
+    @DELETE("files/temp/{fileKey}")
+    suspend fun deleteTempFile(
+        @Path("fileKey") fileKey: String
+    ): Response<Unit>
 }

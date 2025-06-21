@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 
 import com.example.documentmanagerapp.components.Collections.DocumentListScreen
 import com.example.documentmanagerapp.components.Collections.FileDetailsScreen
+import com.example.documentmanagerapp.components.Collections.FileViewerScreen
 import com.example.documentmanagerapp.components.Home.HomeScreen
 import com.example.documentmanagerapp.components.Login.ForgetPasswordScreen
 import com.example.documentmanagerapp.components.Login.RegisterScreen
@@ -56,6 +57,12 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
                 navController = navController,
                 documentId = backStackEntry.arguments?.getString("documentId")?.toLongOrNull() ?: -1L
             )
+        }
+
+        composable("fileViewer/{url}/{fileType}") { backStackEntry ->
+            val url = backStackEntry.arguments?.getString("url") ?: ""
+            val fileType = backStackEntry.arguments?.getString("fileType") ?: ""
+            FileViewerScreen(url = url, fileType = fileType, navController = navController)
         }
     }
 }

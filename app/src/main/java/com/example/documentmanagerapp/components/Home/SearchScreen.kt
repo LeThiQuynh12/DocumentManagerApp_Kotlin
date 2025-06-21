@@ -867,10 +867,13 @@ fun SearchScreen(navController: NavHostController) {
                     placeholder = {
                         Text("Search your documents...", color = Color(0xFF888888))
                     },
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
                         focusedBorderColor = Color(0xFF1E90FF),
                         unfocusedBorderColor = Color.Transparent,
-                        containerColor = Color.White
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
                     ),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = androidx.compose.ui.text.input.ImeAction.Search),

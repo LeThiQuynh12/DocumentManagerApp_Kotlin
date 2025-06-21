@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName
 data class ApiResponse<T>(
     @SerializedName("error") val error: String?,
     @SerializedName("message") val message: String,
-    @SerializedName("results") val results: T?,
+    @SerializedName("results") val results: T? = null,
     @SerializedName("status_code") val status_code: Int
 )
 
@@ -14,6 +14,7 @@ data class Category(
     @SerializedName("id") val id: Long,
     @SerializedName("categoryName") val name: String,
     @SerializedName("categoryGroup") val group: String, // MAIN_BOOSTER hoặc ANOTHER_SAVED_LIST
+    @SerializedName("emoji") val emoji: String? = null,
     @SerializedName("createdAt") val createdAt: String? = null,
     @SerializedName("updatedAt") val updatedAt: String? = null
 )

@@ -19,10 +19,10 @@ data class PermissionData(
     val permissionType: PermissionType,
 
     @SerializedName("createdAt")
-    val createdAt: Timestamp? = null,
+    val createdAt: String? = null,
 
     @SerializedName("updatedAt")
-    val updatedAt: Timestamp? = null
+    val updatedAt: String? = null
 )
 
 enum class PermissionType {
@@ -46,7 +46,7 @@ data class ShareRequestData(
     val email: String,
 
     @SerializedName("documentId")
-    val documentId: Long,
+    val documentId: String,
 
     @SerializedName("permissionType")
     val permissionType: PermissionType
@@ -62,4 +62,11 @@ data class UpdatePermissionRequestData(
 
     @SerializedName("permissionType")
     val permissionType: PermissionType
+)
+
+data class PermissionsResponse(
+    @SerializedName("error") val error: String?,
+    @SerializedName("message") val message: String,
+    @SerializedName("results") val permissions: List<PermissionData>,
+    @SerializedName("status_code") val statusCode: Int
 )

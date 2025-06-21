@@ -53,6 +53,7 @@ package com.example.documentmanagerapp.utils.service
 import com.example.documentmanagerapp.utils.data.DocumentData
 import com.example.documentmanagerapp.utils.data.DocumentLinkRequest
 import com.example.documentmanagerapp.utils.data.DocumentResponse
+import com.example.documentmanagerapp.utils.data.DocumentsResponse
 import retrofit2.http.*
 
 interface DocumentApiService {
@@ -61,7 +62,7 @@ interface DocumentApiService {
     suspend fun getAllDocuments(): DocumentResponse
 
     @GET("documents/{id}")
-    suspend fun getDocumentById(@Path("id") id: Long): DocumentResponse
+    suspend fun getDocumentById(@Path("id") id: Long): DocumentsResponse
 
     @GET("documents/shared/{userId}")
     suspend fun getSharedDocuments(@Path("userId") userId: Long): DocumentResponse

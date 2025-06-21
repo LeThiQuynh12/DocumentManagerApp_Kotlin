@@ -53,6 +53,9 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.util.Date
 import retrofit2.HttpException
+import android.content.Context
+import android.database.Cursor
+import android.provider.OpenableColumns
 
 @Composable
 fun AddFileScreen(
@@ -82,6 +85,19 @@ fun AddFileScreen(
     val userState = authViewModel.user.observeAsState()
     val user = userState.value
 
+    fun getFileNameFromUri(context: Context, uri: Uri): String {
+        var fileName = "unnamed_file"
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor: Cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0) {
+                    fileName = cursor.getString(nameIndex)
+                }
+            }
+        }
+        return fileName
+    }
+
     LaunchedEffect(user) {
         Log.d("AddFileScreen", "Observed user: $user")
         user?.id?.let { userId ->
@@ -102,15 +118,17 @@ fun AddFileScreen(
     val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             selectedFileUri = it
-            selectedFileName = it.path?.substringAfterLast("/") ?: "Unnamed document"
+            selectedFileName = getFileNameFromUri(context, it)
             title = selectedFileName
+            Log.d("AddFileScreen", "Selected file: $selectedFileName")
         }
     }
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         uri?.let {
             selectedFileUri = it
-            selectedFileName = it.path?.substringAfterLast("/") ?: "Unnamed media"
+            selectedFileName = getFileNameFromUri(context, it)
             title = selectedFileName
+            Log.d("AddFileScreen", "Selected media: $selectedFileName")
         }
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->

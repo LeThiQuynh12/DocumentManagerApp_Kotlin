@@ -144,21 +144,36 @@ class FileRepository(private val context: Context) {
         password: String,
         userId: Long,
         categoryId: Long,
-        documentId: Long? = null
+        documentId: Long? = null,
+        documentName: String? = null // Added documentName parameter
     ): FileUploadResponse = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.uploadFile(file, folder, password, userId, categoryId, documentId)
+            val response = apiService.uploadFile(
+                file = file,
+                folder = folder,
+                password = password,
+                userId = userId,
+                categoryId = categoryId,
+                documentId = documentId,
+                documentName = documentName
+            )
             Log.d("FileRepository", "API Response: $response")
 
-            // Kiểm tra tối thiểu
             if (response.s3Url.isBlank()) {
                 throw Exception("Upload failed: Empty s3Url")
             }
 
             response
+        } catch (e: HttpException) {
+            Log.e("FileRepository", "HTTP error uploading file: ${e.code()} - ${e.message()}")
+            when (e.code()) {
+                401 -> throw Exception("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.")
+                403 -> throw Exception("Mật khẩu không hợp lệ")
+                else -> throw Exception("Lỗi tải tệp: HTTP ${e.code()}")
+            }
         } catch (e: Exception) {
             Log.e("FileRepository", "uploadFile error: ${e.message}", e)
-            throw e
+            throw Exception("Lỗi tải tệp: ${e.message}")
         }
     }
 
@@ -170,7 +185,7 @@ class FileRepository(private val context: Context) {
         password: String,
         userId: Long,
         categoryId: Long,
-        documentId: Long? = null
+        documentId: Long? = null,
     ): List<FileUploadResponse> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.uploadMultipleFiles(files, folder, password, userId, categoryId, documentId)
@@ -299,6 +314,33 @@ class FileRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.e("FileRepository", "getDocumentSize error: ${e.message}")
             throw Exception("Lỗi lấy dung lượng tài liệu: ${e.message}")
+        }
+    }
+
+    suspend fun getPresignedUrl(
+        documentId: Long,
+        password: String,
+        versionNumber: Int? = null
+    ): String = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.getPresignedUrl(documentId, password, versionNumber)
+            if (response.status_code != 200 || response.results.isNullOrBlank()) {
+                throw Exception("Không thể lấy URL xem tài liệu: ${response.message}")
+            }
+            response.results
+        } catch (e: Exception) {
+            Log.e("FileRepository", "getPresignedUrl error: ${e.message}")
+            throw Exception("Lỗi lấy URL xem tài liệu: ${e.message}")
+        }
+    }
+
+    suspend fun deleteTempFile(fileKey: String) = withContext(Dispatchers.IO) {
+        try {
+            apiService.deleteTempFile(fileKey)
+            Log.d("FileRepository", "Deleted temp file: $fileKey")
+        } catch (e: Exception) {
+            Log.e("FileRepository", "deleteTempFile error: ${e.message}")
+            throw Exception("Lỗi xóa tệp tạm: ${e.message}")
         }
     }
 }

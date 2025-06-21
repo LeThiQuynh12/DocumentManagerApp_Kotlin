@@ -1,4 +1,5 @@
 package com.example.documentmanagerapp.utils.repository
+
 import android.content.Context
 import android.util.Log
 import com.example.documentmanagerapp.utils.ApiClient
@@ -12,11 +13,11 @@ class DocumentVersionRepository(context: Context) {
     private val apiService: DocumentVersionApiService =
         ApiClient.getClient(context).create(DocumentVersionApiService::class.java)
 
-    // Lấy danh sách phiên bản theo docId
     suspend fun getVersionsByDocumentId(docId: Long): List<DocumentVersionData> {
         return withContext(Dispatchers.IO) {
             try {
-                apiService.getVersionsByDocumentId(docId)
+                val response = apiService.getVersionsByDocumentId(docId)
+                response.results ?: emptyList() // Trả về danh sách rỗng nếu results là null
             } catch (e: Exception) {
                 Log.e("DocumentVersionRepo", "Lỗi khi lấy phiên bản tài liệu: ${e.message}")
                 throw Exception("Không thể lấy phiên bản tài liệu: ${e.message}")
@@ -24,7 +25,6 @@ class DocumentVersionRepository(context: Context) {
         }
     }
 
-    // Lấy phiên bản theo documentId (từ endpoint khác)
     suspend fun getVersions(documentId: Long): List<DocumentVersionData> {
         return withContext(Dispatchers.IO) {
             try {
@@ -36,7 +36,6 @@ class DocumentVersionRepository(context: Context) {
         }
     }
 
-    // Tạo phiên bản mới
     suspend fun createDocumentVersion(version: DocumentVersionData): DocumentVersionData {
         return withContext(Dispatchers.IO) {
             try {
